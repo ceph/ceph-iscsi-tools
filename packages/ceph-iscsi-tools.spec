@@ -6,7 +6,7 @@ Group:		Applications/System
 License:	GPLv3
 
 URL:		https://github.com/pcuzner/ceph-iscsi-tools
-Source0:	https://github.com/pcuzner/%{name}/packages/%{name}.tar.gz
+Source0:	https://github.com/pcuzner/%{name}/archive/%{version}/%{name}-%{version}.tar.gz
 
 BuildRequires: python2-devel
 BuildRequires: python-setuptools
@@ -27,7 +27,7 @@ or from the rados configuration object (if the config was built with the
 ceph-iscsi-ansible tools.
 
 %prep
-%setup -q -n %{name}
+%setup -q 
 
 
 %build
@@ -45,6 +45,7 @@ CFLAGS="$RPM_OPT_FLAGS" %{__python} setup.py build
 # %defattr(-,root,root,-)
 %doc README
 %doc LICENSE
+%doc samples/
 %{_bindir}/gwtop
 %{python2_sitelib}/*
 # %{_mandir}/man8/gstatus.8.gz
