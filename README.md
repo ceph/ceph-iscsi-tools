@@ -18,3 +18,10 @@ Device   Pool/Image        Size     r/s     w/s    rMB/s     wMB/s    await  r_a
  rbd2   rbd/ansible3        30G       0       0     0.00      0.00     0.00     0.00     0.00  w2k12r2    
  rbd3   rbd/ansible4        50G       0       0     0.00      0.00     0.00     0.00     0.00             
 ```
+
+The gateway configuration is determined gwtop looking at the following sources (in order)  
+- the invocation used the -g host-1,host-2 over-ride  
+- the user has a .gwtop.rc file in the root of their home directory  
+- the environment was created by the ceph-iscsi-ansible project, and has committed state to the rbd/gateway.conf object  
+
+An example of the 'rc' file is provided in the /usr/share/doc directory.
