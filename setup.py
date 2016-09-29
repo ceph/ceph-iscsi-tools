@@ -11,6 +11,7 @@ if os.path.exists('README'):
 else:
     long_description = ''
 
+
 # idea from http://stackoverflow.com/a/11400431/2139420
 class StripExtension(distutils.command.install_scripts.install_scripts):
     """
