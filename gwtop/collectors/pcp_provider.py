@@ -4,7 +4,8 @@ import threading
 
 from pcp import pmapi, pmcc
 from gwtop.config.generic import DiskMetrics, GatewayMetrics
-
+import subprocess
+import json
 
 
 # group metrics
@@ -22,6 +23,31 @@ NETWORK_METRICS = ['network.interface.in.bytes', 'network.interface.out.bytes']
 
 # single metric
 CPU_METRICS = ['kernel.all.cpu.idle', 'kernel.all.load', 'hinv.ncpu']
+
+
+class RBDMap(object):
+
+    def __init__(self):
+        self.map = {}
+        self.refresh()
+
+    def refresh(self):
+        self._get_map()
+
+    def _get_map(self):
+
+        try:
+            map_out = subprocess.check_output('rbd showmapped --format=json', shell=True)
+        except subprocess.CalledProcessError:
+            pass
+        else:
+            map_json = json.loads(map_out)
+            for dev_id in map_json:
+                devname = 'rbd{}'.format(dev_id)
+                pool = map_json[dev_id]['pool']
+                image_name = map_json[dev_id]['name']
+                key = "{}/{}".format(pool, image_name)
+                self.map[devname] = key
 
 
 class IOstatOptions(pmapi.pmOptions):
@@ -44,10 +70,12 @@ class PCPextract(pmcc.MetricGroupPrinter):
 
     NIC_BLACKLIST = ['lo', 'docker0']
     HDRcount = 0
+    valid_devices = ('rbd')
 
     def __init__(self, metrics):
         pmcc.MetricGroupPrinter.__init__(self)
         self.metrics = metrics
+        self.rbds = RBDMap()
 
     def timeStampDelta(self, group):
         s = group.timestamp.tv_sec - group.prevTimestamp.tv_sec
@@ -72,7 +100,8 @@ class PCPextract(pmcc.MetricGroupPrinter):
         group = manager["gateways"]
 
         nic_list = self.instlist(group, 'network.interface.in.bytes')
-        instlist = self.instlist(group, subtree + '.read')    # just use reads to get instances
+        all_disks = self.instlist(group, subtree + '.read')    # just use reads to get all disk instance names
+        instlist = [disk_id for disk_id in all_disks if disk_id.startswith(PCPextract.valid_devices)]
         # print "DEBUG - devices found %s " % instlist
 
         if group[subtree + '.read'].netPrevValues is None:
@@ -138,8 +167,18 @@ class PCPextract(pmcc.MetricGroupPrinter):
             self.metrics.nic_bytes = {'in': tot_in, 'out': tot_out}
 
             for inst in sorted(instlist):
+
                 if inst not in self.metrics.disk_stats:
                     self.metrics.disk_stats[inst] = DiskMetrics()
+                    try:
+                        self.metrics.disk_stats[inst].pool_image = self.rbds.map[inst]
+                    except KeyError:
+                        self.rbds.refresh()
+                        if inst in self.rbds.map:
+                            self.metrics.disk_stats[inst].pool_image = self.rbds.map[inst]
+                        else:
+                            raise NameError("Unable to convert a device name to it's"
+                                            " pool/image format - {}".format(inst))
 
                 self.metrics.disk_stats[inst].read = (c_r[inst] - p_r[inst]) / dt
 
