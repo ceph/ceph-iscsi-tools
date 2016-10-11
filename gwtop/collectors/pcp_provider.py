@@ -168,36 +168,37 @@ class PCPextract(pmcc.MetricGroupPrinter):
 
             for inst in sorted(instlist):
 
-                if inst not in self.metrics.disk_stats:
-                    self.metrics.disk_stats[inst] = DiskMetrics()
-                    try:
-                        self.metrics.disk_stats[inst].pool_image = self.rbds.map[inst]
-                    except KeyError:
-                        self.rbds.refresh()
-                        if inst in self.rbds.map:
-                            self.metrics.disk_stats[inst].pool_image = self.rbds.map[inst]
-                        else:
-                            raise NameError("Unable to convert a device name to it's"
-                                            " pool/image format - {}".format(inst))
+                try:
+                    # get pool/image for an rbdX device name
+                    key = self.rbds.map[inst]
+                except KeyError:
+                    self.rbds.refresh()
+                    if inst in self.rbds.map:
+                        key = self.rbds.map[inst]
+                    else:
+                        raise NameError("Unable to convert {} to a pool/image format name".format(inst))
 
-                self.metrics.disk_stats[inst].read = (c_r[inst] - p_r[inst]) / dt
+                if key not in self.metrics.disk_stats:
+                    self.metrics.disk_stats[key] = DiskMetrics()
 
-                self.metrics.disk_stats[inst].write = (c_w[inst] - p_w[inst]) / dt
-                self.metrics.disk_stats[inst].readkb = (c_rkb[inst] - p_rkb[inst]) / dt
-                self.metrics.disk_stats[inst].writekb = (c_wkb[inst] - p_wkb[inst]) / dt
+                self.metrics.disk_stats[key].read = (c_r[inst] - p_r[inst]) / dt
+
+                self.metrics.disk_stats[key].write = (c_w[inst] - p_w[inst]) / dt
+                self.metrics.disk_stats[key].readkb = (c_rkb[inst] - p_rkb[inst]) / dt
+                self.metrics.disk_stats[key].writekb = (c_wkb[inst] - p_wkb[inst]) / dt
 
                 tot_rios = (float)(c_r[inst] - p_r[inst])
                 tot_wios = (float)(c_w[inst] - p_w[inst])
                 tot_ios = (float)(tot_rios + tot_wios)
 
-                self.metrics.disk_stats[inst].await = (((c_ractive[inst] - p_ractive[inst]) +
+                self.metrics.disk_stats[key].await = (((c_ractive[inst] - p_ractive[inst]) +
                                                        (c_wactive[inst] - p_wactive[inst]))
-                                                       / tot_ios) if tot_ios else 0.0
+                                                        / tot_ios) if tot_ios else 0.0
 
-                self.metrics.disk_stats[inst].r_await = ((c_ractive[inst] - p_ractive[inst])
+                self.metrics.disk_stats[key].r_await = ((c_ractive[inst] - p_ractive[inst])
                                                          / tot_rios) if tot_rios else 0.0
 
-                self.metrics.disk_stats[inst].w_await = ((c_wactive[inst] - p_wactive[inst])
+                self.metrics.disk_stats[key].w_await = ((c_wactive[inst] - p_wactive[inst])
                                                          / tot_wios) if tot_wios else 0.0
 
         except KeyError:

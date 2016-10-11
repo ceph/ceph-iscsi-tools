@@ -4,10 +4,12 @@
 import subprocess
 import json
 import rados
+import os
 
 from rtslib_fb import root
 
 from gwtop.config.generic import get_devid
+from ceph_iscsi_config.utils import get_pool_name
 
 CEPH_CONF = '/etc/ceph/ceph.conf'
 
@@ -83,27 +85,62 @@ class GatewayConfig(object):
             self.client_count = self._unique_clients()
 
     def _get_mapped_disks(self):
+        '''
+        return a dict indexed by a pool/image name that points to the client
+        that has this device mapped to it
+        :return: dict
+        '''
+
         map = {}
+        pools = {}
         lio_root = root.RTSRoot()
 
+        # get a list of active sessions on this host indexed by the iqn
         connections = {}
         for con in lio_root.sessions:
             nodeacl = con['parent_nodeacl']
             connections[nodeacl.node_wwn] = con['state']
 
-        for m_lun in lio_root.mapped_luns:
-            udev_path = m_lun.tpg_lun.storage_object.udev_path
-            dev_id = get_devid(udev_path)
-            if dev_id in map:
-                # seen this device before, so it's shared across clients
-                suffix = ""
-                client_shortname = "- multi -"
-            else:
-                client_iqn = m_lun.node_wwn
-                suffix = ' (C)' if client_iqn in connections else ''
-                client_shortname = client_iqn.split(':')[-1]
+        for tpg in lio_root.tpgs:
+            if tpg._get_enable():
+                # this tpg is enabled, so let's walk the luns
+                # and process all luns mapped to this tpg
+                for lun in tpg.luns:
 
-            map[dev_id] = client_shortname + suffix
+                    dm_id = os.path.basename(lun.storage_object.udev_path)
+                    dm_num = dm_id.split('-')[0]
+
+                    # dev_path = m_lun.storage_object.path
+                    # '/sys/kernel/config/target/core/iblock_0/ansible3'
+                    # iblock_name = dev_path.split('/')[-2]
+
+                    image_name = lun.storage_object.name
+                    if dm_num in pools:
+                        pool_name = pools[dm_num]
+                    else:
+                        pools[dm_num] = get_pool_name(pool_id=int(dm_num))
+                        pool_name = pools[dm_num]
+
+                    key = "{}/{}".format(pool_name, image_name)
+
+                    # udev_path = m_lun.storage_object.udev_path
+                    # dev_id = get_devid(udev_path)
+
+                    client_iqns = []
+
+                    for mapping in lun.mapped_luns:
+                        client_iqns.append(mapping.node_wwn)
+
+                    suffix = ''
+                    client_shortname = ''
+
+                    if len(client_iqns) == 1:
+                        client_shortname = client_iqns[0].split(':')[-1]
+                        suffix = '(CON)' if client_iqns[0] in connections else ''
+                    elif len(client_iqns) > 1:
+                        client_shortname = '- multi -'
+
+                    map[key] = client_shortname + suffix
 
         return map
 

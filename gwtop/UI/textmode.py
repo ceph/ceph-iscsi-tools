@@ -21,6 +21,28 @@ class TextMode(threading.Thread):
         self.pcp_collectors = pcp_threads
         self.terminal = None
 
+    def sort_stats(self, in_dict):
+        '''
+        sort the disk_summary by any sort keys requested, returning the
+        pool/image name sequence that adheres to the sort request
+        @param in_dict: dict of objects (indexed by pool/image)
+        :return: keys to use to adhere to the sort keys
+        '''
+
+        sort_key = self.config.opts.sortkey
+        reverse_mode = self.config.opts.reverse
+
+        if sort_key == 'image':
+            sorted_keys = sorted(in_dict)
+        else:
+            sorted_keys = sorted(in_dict,
+                                 key=lambda keyname: getattr(in_dict[keyname], sort_key),
+                                 reverse=reverse_mode)
+
+        return sorted_keys
+
+
+
     def show_stats(self, gw_stats, disk_summary):
         num_gws = len(gw_stats.cpu_busy)
         desc = "Gateways" if num_gws > 1 else "Gateway"
@@ -39,19 +61,23 @@ class TextMode(threading.Thread):
               gw_stats.total_iops,
               self.config.gateway_config.client_count))
 
-        print "Device   Pool/Image        Size     r/s     w/s    rMB/s     wMB/s    await  r_await  w_await  Client"
+        print "Pool/Image        Device   Size     r/s     w/s    rMB/s     wMB/s    await  r_await  w_await  Client"
 
-        # Metrics shown sorted by device name by default (i.e. rbd0..rbd1..rbdX)
-        for devname in sorted(disk_summary):
+        # Metrics shown sorted by pool/image name by default
+
+
+
+
+        for devname in self.sort_stats(disk_summary):
 
             if devname in self.config.gateway_config.diskmap:
                 client = self.config.gateway_config.diskmap[devname]
             else:
                 client = ''
 
-            print("{:^6}  {:<16}   {:>4}   {:>5}   {:>5}   {:>6.2f}    {:>6.2f}   {:>6.2f}   {:>6.2f}   "
+            print("{:<16}  {:^6}   {:>4}   {:>5}   {:>5}   {:>6.2f}    {:>6.2f}   {:>6.2f}   {:>6.2f}   "
                   "{:>6.2f}  {:<20}".format(devname,
-                                            disk_summary[devname].pool_image,
+                                            disk_summary[devname].rbd_name,
                                             bytes2human(disk_summary[devname].disk_size),
                                             int(disk_summary[devname].tot_reads),
                                             int(disk_summary[devname].tot_writes),
@@ -62,7 +88,6 @@ class TextMode(threading.Thread):
                                             disk_summary[devname].max_w_await,
                                             client))
         print
-
 
     def reset(self):
         self.terminal.reset()

@@ -36,11 +36,12 @@ def summarize(config, pcp_threads):
         else:
             in_sync = True
 
+    # device will be of the form - pool/image_name
     for dev in config.devices:
 
         summary = DiskSummary()
         summary.disk_size = config.devices[dev]['size']
-        summary.pool_image = config.devices[dev]['pool-image']
+        summary.rbd_name = config.devices[dev]['rbd_name']
 
         for collector in pcp_threads:
 

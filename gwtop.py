@@ -116,6 +116,12 @@ def get_options():
     parser.add_argument('-m', '--mode', type=str,
                         choices=(['text']),
                         help='output mode')
+    parser.add_argument('-s', '--sortkey', type=str,
+                        choices=['image', 'rbd_name', 'reads', 'writes', 'await'],
+                        default='image',
+                        help='sort key sequence')
+    parser.add_argument('-r', '--reverse', action='store_true', default=False,
+                        help='use reverse sort when displaying the stats')
     # parser.add_argument('-t', '--test', action='store_true', default=False,
     #                     help='run in test mode - i.e. without rados interaction')
 
