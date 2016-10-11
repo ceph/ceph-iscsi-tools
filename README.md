@@ -25,3 +25,32 @@ The gateway configuration is determined gwtop looking at the following sources (
 - the environment was created by the ceph-iscsi-ansible project, and has committed state to the rbd/gateway.conf object  
 
 An example of the 'rc' file is provided in the /usr/share/doc directory.
+
+Invocation provides the following options;
+  
+```  
+[root@ceph-1 lvm]# gwtop -h  
+usage: igwtop [-h] [-c CONFIG_OBJECT] [-g GATEWAYS] [-i {1,2,3,4,5,6,7,8,9}]  
+              [-d] [-m {text}] [-s {image,rbd_name,reads,writes,await}] [-r]  
+              [-v]  
+
+Show iSCSI gateway performance metrics  
+  
+optional arguments:  
+  -h, --help            show this help message and exit  
+  -c CONFIG_OBJECT, --config-object CONFIG_OBJECT  
+                        pool and object name holding the gateway config object  
+                        (pool/object_name)  
+  -g GATEWAYS, --gateways GATEWAYS  
+                        comma separated iscsi gateway server names  
+  -i {1,2,3,4,5,6,7,8,9}, --interval {1,2,3,4,5,6,7,8,9}  
+                        monitoring interval (secs)  
+  -d, --debug           run with additional debug  
+  -m {text}, --mode {text}  
+                        output mode  
+  -s {image,rbd_name,reads,writes,await}, --sortkey {image,rbd_name,reads,writes,await}  
+                        sort key sequence  
+  -r, --reverse         use reverse sort when displaying the stats  
+  -v, --version         show program's version number and exit  
+
+```  
