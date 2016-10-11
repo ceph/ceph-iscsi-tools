@@ -1,5 +1,5 @@
 Name:		ceph-iscsi-tools
-Version:	0.1
+Version:	0.2
 Release:	1%{?dist}
 Summary:	iostat/top like tools to show disk performance metrics aggregated across a number of iscsi gateways
 Group:		Applications/System
@@ -52,6 +52,11 @@ CFLAGS="$RPM_OPT_FLAGS" %{__python} setup.py build
 
 
 %changelog
+* Tue Oct 11 2016 Paul Cuzner <pcuzner@redhat.com> 0.2-1
+- added a sort key enabling the summary stats to be sorted by a given metric
+- sort can be in ascending/descending sequence
+- internally changed the indexing of the data from rbdX to pool/image
+
 * Thu Sep 29 2016 Paul Cuzner <pcuzner@redhat.com> 0.1-1
 - initial rpm packaging
 
