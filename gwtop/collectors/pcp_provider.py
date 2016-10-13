@@ -4,25 +4,23 @@ import threading
 
 from pcp import pmapi, pmcc
 from gwtop.config.generic import DiskMetrics, GatewayMetrics
-import subprocess
-import json
-
+import re
+import os
+import glob
+from rtslib_fb.utils import fread
 
 # group metrics
-# IOSTAT_METRICS = ['disk.dev.read', 'disk.dev.read_bytes',
-#                   'disk.dev.write', 'disk.dev.write_bytes',
-#                   'disk.dev.read_rawactive', 'disk.dev.write_rawactive']
-IOSTAT_METRICS = ['disk.partitions.read', 'disk.partitions.read_bytes',
-                  'disk.partitions.write', 'disk.partitions.write_bytes',
-                  'disk.partitions.read_rawactive', 'disk.partitions.write_rawactive']
-
-# other metrics that could be useful
-#                  'disk.dev.read_rawactive', 'disk.dev.write_rawactive', 'disk.dev.avactive'
+IOSTAT_METRICS = ['disk.dm.read', 'disk.dm.read_bytes',
+                  'disk.dm.write', 'disk.dm.write_bytes',
+                  'disk.dm.read_rawactive', 'disk.dm.write_rawactive']
 
 NETWORK_METRICS = ['network.interface.in.bytes', 'network.interface.out.bytes']
 
 # single metric
 CPU_METRICS = ['kernel.all.cpu.idle', 'kernel.all.load', 'hinv.ncpu']
+
+class CollectorError(Exception):
+    pass
 
 
 class RBDMap(object):
@@ -34,20 +32,29 @@ class RBDMap(object):
     def refresh(self):
         self._get_map()
 
-    def _get_map(self):
+        if not self.map:
+            raise CollectorError("RBDMAP: Unable to create the dm -> rbd_name lookup table")
 
-        try:
-            map_out = subprocess.check_output('rbd showmapped --format=json', shell=True)
-        except subprocess.CalledProcessError:
-            pass
-        else:
-            map_json = json.loads(map_out)
-            for dev_id in map_json:
-                devname = 'rbd{}'.format(dev_id)
-                pool = map_json[dev_id]['pool']
-                image_name = map_json[dev_id]['name']
-                key = "{}/{}".format(pool, image_name)
-                self.map[devname] = key
+    def _get_map(self):
+        """
+        Convert dm devices into their pool/rbd_image name. All gateway nodes should see
+        the same rbds, and each rbd when mapped through device mapper will have the same
+        name, so this gives us a common reference point.
+        """
+
+        dm_devices = glob.glob('/dev/mapper/[0-255]-*')
+
+        if dm_devices:
+            for dm_path in dm_devices:
+                key = os.path.basename(dm_path)                     # e.g. 0-198baf12200854
+                dm_id = os.path.realpath(dm_path).split('/')[-1]    # e.g. dm-4
+                rbd_device = os.listdir('/sys/class/block/{}/slaves'.format(dm_id))[0]    # rbdX
+                rbd_num = rbd_device[3:]                            # X
+                pool = fread('/sys/devices/rbd/{}/pool'.format(rbd_num))
+                image = fread('/sys/devices/rbd/{}/name'.format(rbd_num))
+
+                self.map[key] = {"rbd_name": "{}/{}".format(pool, image),
+                                 "rbd_dev": rbd_device}
 
 
 class IOstatOptions(pmapi.pmOptions):
@@ -70,7 +77,7 @@ class PCPextract(pmcc.MetricGroupPrinter):
 
     NIC_BLACKLIST = ['lo', 'docker0']
     HDRcount = 0
-    valid_devices = ('rbd')
+    device_regex = '[0-255]-[a-f,0-9]+'
 
     def __init__(self, metrics):
         pmcc.MetricGroupPrinter.__init__(self)
@@ -93,15 +100,19 @@ class PCPextract(pmcc.MetricGroupPrinter):
         return dict(map(lambda x: (x[1], x[2]), group[name].netPrevValues))
 
     def report(self, manager):
-        subtree = 'disk.partitions'
+        subtree = 'disk.dm'
 
         # print "DEBUG - in report function"
 
         group = manager["gateways"]
 
         nic_list = self.instlist(group, 'network.interface.in.bytes')
+
         all_disks = self.instlist(group, subtree + '.read')    # just use reads to get all disk instance names
-        instlist = [disk_id for disk_id in all_disks if disk_id.startswith(PCPextract.valid_devices)]
+
+        # rbd device mapped for the gateway use the following naming convention
+        # <pool_id>-<rbd uid>
+        instlist = [disk_id for disk_id in all_disks if re.search(PCPextract.device_regex, disk_id) is not None]
         # print "DEBUG - devices found %s " % instlist
 
         if group[subtree + '.read'].netPrevValues is None:
@@ -112,7 +123,7 @@ class PCPextract(pmcc.MetricGroupPrinter):
 
         timestamp = group.contextCache.pmCtime(int(group.timestamp)).rstrip()
 
-        # disk metrics
+        # dm metrics
         c_r = self.curVals(group, subtree + '.read')
         p_r = self.prevVals(group, subtree + '.read')
 
@@ -169,14 +180,14 @@ class PCPextract(pmcc.MetricGroupPrinter):
             for inst in sorted(instlist):
 
                 try:
-                    # get pool/image for an rbdX device name
-                    key = self.rbds.map[inst]
+                    # get pool/image name for the dm name from the lookup table
+                    key = self.rbds.map[inst]['rbd_name']
                 except KeyError:
                     self.rbds.refresh()
                     if inst in self.rbds.map:
-                        key = self.rbds.map[inst]
+                        key = self.rbds.map[inst]['rbd_name']
                     else:
-                        raise NameError("Unable to convert {} to a pool/image format name".format(inst))
+                        raise CollectorError("PCPExtract: Unable to convert {} to a pool/image name".format(inst))
 
                 if key not in self.metrics.disk_stats:
                     self.metrics.disk_stats[key] = DiskMetrics()
@@ -237,6 +248,7 @@ class PCPcollector(threading.Thread):
             self.metrics.disk_stats = {}
             self.metrics.nic_bytes = {'in': 0, 'out': 0}
             self.manager.printer = PCPextract(self.metrics)
+
             self.connected = True
         except pmapi.pmErr:
             self.connected = False
