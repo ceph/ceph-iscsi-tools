@@ -33,8 +33,10 @@ class TextMode(threading.Thread):
         reverse_mode = self.config.opts.reverse
 
         if sort_key == 'image':
+            # sort by the key name i.e. rbd/database1
             sorted_keys = sorted(in_dict)
         else:
+            # sort by attribute
             sorted_keys = sorted(in_dict,
                                  key=lambda keyname: getattr(in_dict[keyname], sort_key),
                                  reverse=reverse_mode)
