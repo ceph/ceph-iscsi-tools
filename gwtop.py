@@ -20,6 +20,13 @@ CFG_FILES = ['/etc/gwtop.rc',
              os.path.join(os.path.expanduser('~'), '.gwtop.rc')
              ]
 
+def exception_handler(exception_type, exception, traceback, debug_hook=sys.excepthook):
+
+    if options.debug:
+        debug_hook(exception_type, exception, traceback)
+    else:
+        print "{}: {}".format(exception_type.__name__, exception)
+
 
 def main():
     config = Config()
@@ -55,6 +62,7 @@ def main():
     for gw in config.gateway_config.gateways:
         collector = PCPcollector(logger, sync_point, host=gw, interval=config.sample_interval)
 
+        # check the state of the collector
         if collector.connected:
             collector.daemon = True
             collector.start()
@@ -146,6 +154,10 @@ def get_options():
 
 if __name__ == '__main__':
     options = get_options()
+
+    # Override the default exception handler to only show back traces in debug mode
+    sys.excepthook = exception_handler
+
 
     # define logging to the console
     # set the format to just the msg
