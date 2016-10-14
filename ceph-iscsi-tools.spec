@@ -1,7 +1,7 @@
 Name:		ceph-iscsi-tools
-Version:	0.3
+Version:	1.0
 Release:	1%{?dist}
-Summary:	iostat/top like tools to show disk performance metrics aggregated across a number of iscsi gateways
+Summary:	Tools to interact with the ceph's iscsi gateway nodes
 Group:		Applications/System
 License:	GPLv3
 
@@ -17,18 +17,17 @@ Requires: python-rtslib
 Requires: python-rados
 
 %description
-CLI command to aggregate performance stats from a number iscsi gateways
-into a single view. Performance metrics are extracted from performance
-co-pilot (pmcd) running on each gateway node, and presented to the admin
-to given an holistic view of the load across all iscsi gateways in the
-configuration. The gateways to contact are determined either through the
--g invocation parameter, the .gwtop.rc file in the admins home directory
-or from the rados configuration object (if the config was built with the
-ceph-iscsi-ansible tools.
+This package provides tools to help the admin interact with
+the iscsi gateway nodes.
+
+'gwtop' is a CLI command to aggregate performance stats from
+a number iscsi gateways into a single view. Performance
+metrics are extracted from performance co-pilot (pmcd)
+running on each gateway node, and aggregated into a single
+view.
 
 %prep
 %setup -q 
-
 
 %build
 CFLAGS="$RPM_OPT_FLAGS" %{__python} setup.py build
@@ -36,23 +35,16 @@ CFLAGS="$RPM_OPT_FLAGS" %{__python} setup.py build
 
 %install
 %{__python} setup.py install --skip-build --root %{buildroot} --install-scripts %{_bindir}
-# mkdir -p %{buildroot}%{_mandir}/man8
-# install -m 0644 gstatus.8 %{buildroot}%{_mandir}/man8/
-# gzip %{buildroot}%{_mandir}/man8/gstatus.8
-
 
 %files
-# %defattr(-,root,root,-)
 %doc README
 %doc LICENSE
 %doc samples/
 %{_bindir}/gwtop
 %{python2_sitelib}/*
-# %{_mandir}/man8/gstatus.8.gz
-
 
 %changelog
-* Fri Oct 14 2016 Paul Cuzner <pcuzner@redhat.com> 0.3-1
+* Sat Oct 15 2016 Paul Cuzner <pcuzner@redhat.com> 1.0-1
 - switched from disk.partition stats to disk.dm stats from pmcd
 - simplified the mapping of dm device to rbd name, removing subprocess call
 - added custom exception handler to mask backtrace unless in debug
