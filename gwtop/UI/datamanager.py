@@ -4,6 +4,7 @@ __author__ = 'paul'
 from time import sleep
 
 from gwtop.config.generic import DiskSummary, HostSummary
+from socket import gethostname
 
 
 def summarize(config, pcp_threads):
@@ -36,12 +37,15 @@ def summarize(config, pcp_threads):
         else:
             in_sync = True
 
+    this_host = gethostname().split('.')[0]
+
     # device will be of the form - pool/image_name
     for dev in config.devices:
 
         summary = DiskSummary()
         summary.disk_size = config.devices[dev]['size']
         summary.rbd_name = config.devices[dev]['rbd_name']
+        summary.io_source = ''
 
         for collector in pcp_threads:
 
@@ -53,6 +57,13 @@ def summarize(config, pcp_threads):
                 summary.await.append(collector.metrics.disk_stats[dev].await)
                 summary.r_await.append(collector.metrics.disk_stats[dev].r_await)
                 summary.w_await.append(collector.metrics.disk_stats[dev].w_await)
+
+                combined_io = collector.metrics.disk_stats[dev].read + collector.metrics.disk_stats[dev].write
+                if combined_io > 0:
+                    if collector.hostname == this_host:
+                        summary.io_source = 'L'
+                    else:
+                        summary.io_source = 'R'
 
             # some metrics we only gather during the first cycle through the collector
             # threads

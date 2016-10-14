@@ -33,10 +33,8 @@ class TextMode(threading.Thread):
         reverse_mode = self.config.opts.reverse
 
         if sort_key == 'image':
-            # sort by the key name i.e. rbd/database1
             sorted_keys = sorted(in_dict)
         else:
-            # sort by attribute
             sorted_keys = sorted(in_dict,
                                  key=lambda keyname: getattr(in_dict[keyname], sort_key),
                                  reverse=reverse_mode)
@@ -63,7 +61,7 @@ class TextMode(threading.Thread):
               gw_stats.total_iops,
               self.config.gateway_config.client_count))
 
-        print "Pool/Image        Device   Size     r/s     w/s    rMB/s     wMB/s    await  r_await  w_await  Client"
+        print "Pool/Image        L/R  Device   Size     r/s     w/s    rMB/s     wMB/s    await  r_await  w_await  Client"
 
         # Metrics shown sorted by pool/image name by default
 
@@ -77,8 +75,9 @@ class TextMode(threading.Thread):
             else:
                 client = ''
 
-            print("{:<16}  {:^6}   {:>4}   {:>5}   {:>5}   {:>6.2f}    {:>6.2f}   {:>6.2f}   {:>6.2f}   "
+            print("{:<16}  {:^3}  {:^6}   {:>4}   {:>5}   {:>5}   {:>6.2f}    {:>6.2f}   {:>6.2f}   {:>6.2f}   "
                   "{:>6.2f}  {:<20}".format(devname,
+                                            disk_summary[devname].io_source,
                                             disk_summary[devname].rbd_name,
                                             bytes2human(disk_summary[devname].disk_size),
                                             int(disk_summary[devname].tot_reads),
