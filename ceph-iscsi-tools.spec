@@ -48,6 +48,8 @@ CFLAGS="$RPM_OPT_FLAGS" %{__python} setup.py build
 - switched from disk.partition stats to disk.dm stats from pmcd
 - simplified the mapping of dm device to rbd name, removing subprocess call
 - added custom exception handler to mask backtrace unless in debug
+- added i/o source flag showing whether the i/o to an rbd is local or not
+- updated invocation to allow sort by io source (t or O ... this or other)
 
 * Tue Oct 11 2016 Paul Cuzner <pcuzner@redhat.com> 0.2-1
 - added a sort key enabling the summary stats to be sorted by a given metric
