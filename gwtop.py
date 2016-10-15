@@ -125,7 +125,7 @@ def get_options():
                         choices=(['text']),
                         help='output mode')
     parser.add_argument('-s', '--sortkey', type=str,
-                        choices=['image', 'rbd_name', 'reads', 'writes', 'await'],
+                        choices=['image', 'rbd_name', 'reads', 'writes', 'await', 'io_source'],
                         default='image',
                         help='sort key sequence')
     parser.add_argument('-r', '--reverse', action='store_true', default=False,

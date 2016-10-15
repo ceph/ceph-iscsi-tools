@@ -61,7 +61,7 @@ class TextMode(threading.Thread):
               gw_stats.total_iops,
               self.config.gateway_config.client_count))
 
-        print "Pool/Image        L/R  Device   Size     r/s     w/s    rMB/s     wMB/s    await  r_await  w_await  Client"
+        print "Pool/Image        Src  Device   Size     r/s     w/s    rMB/s     wMB/s    await  r_await  w_await  Client"
 
         # Metrics shown sorted by pool/image name by default
 

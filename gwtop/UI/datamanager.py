@@ -61,9 +61,11 @@ def summarize(config, pcp_threads):
                 combined_io = collector.metrics.disk_stats[dev].read + collector.metrics.disk_stats[dev].write
                 if combined_io > 0:
                     if collector.hostname == this_host:
-                        summary.io_source = 'L'
+                        # I/O is serviced (T)his gateway
+                        summary.io_source = 'T'
                     else:
-                        summary.io_source = 'R'
+                        # I/O is serviced by (O)ther gateway
+                        summary.io_source = 'O'
 
             # some metrics we only gather during the first cycle through the collector
             # threads

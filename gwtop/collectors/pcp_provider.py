@@ -192,6 +192,7 @@ class PCPextract(pmcc.MetricGroupPrinter):
                 if key not in self.metrics.disk_stats:
                     self.metrics.disk_stats[key] = DiskMetrics()
 
+                self.metrics.disk_stats[key].dm_device = inst
                 self.metrics.disk_stats[key].read = (c_r[inst] - p_r[inst]) / dt
 
                 self.metrics.disk_stats[key].write = (c_w[inst] - p_w[inst]) / dt
