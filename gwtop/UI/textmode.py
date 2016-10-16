@@ -39,7 +39,7 @@ class TextMode(threading.Thread):
         reverse_mode = self.config.opts.reverse
 
         if sort_key == 'image':
-            sorted_keys = sorted(in_dict)
+            sorted_keys = sorted(in_dict, reverse=reverse_mode)
         else:
             sorted_keys = sorted(in_dict,
                                  key=lambda keyname: getattr(in_dict[keyname], sort_key),

@@ -103,6 +103,8 @@ def get_options():
     if len(dataset) > 0:
         if config.has_section("config"):
             defaults.update(dict(config.items("config")))
+            if 'reverse' in defaults:
+                defaults['reverse'] = True if defaults['reverse'].lower() == 'true' else False
         else:
             print("Config file detected, but the format is not supported. Ensure the file has a single "
                   "section [config], and declares settings like 'gateways' or 'interval'")
@@ -130,9 +132,6 @@ def get_options():
                         help='sort key sequence')
     parser.add_argument('-r', '--reverse', action='store_true', default=False,
                         help='use reverse sort when displaying the stats')
-    # parser.add_argument('-t', '--test', action='store_true', default=False,
-    #                     help='run in test mode - i.e. without rados interaction')
-
     parser.add_argument('-v', '--version', action='version', version='%(prog)s 0.5')
 
     # use the defaults dict for the options
