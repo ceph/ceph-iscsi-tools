@@ -1,6 +1,6 @@
 Name:		ceph-iscsi-tools
 Version:	1.0
-Release:	1%{?dist}
+Release:	2%{?dist}
 Summary:	Tools to interact with the ceph's iscsi gateway nodes
 Group:		Applications/System
 License:	GPLv3
