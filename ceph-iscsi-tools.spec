@@ -7,6 +7,7 @@ License:	GPLv3
 
 URL:		https://github.com/pcuzner/ceph-iscsi-tools
 Source0:	https://github.com/pcuzner/%{name}/archive/%{version}/%{name}-%{version}.tar.gz
+BuildArch:      noarch
 
 BuildRequires: python2-devel
 BuildRequires: python-setuptools
