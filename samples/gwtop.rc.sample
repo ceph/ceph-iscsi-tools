@@ -1,0 +1,16 @@
+[config]
+# comma separated list of gateway node names
+gateways=ceph-1,ceph-2
+
+# interval in seconds between each pmcd sample (1..9)
+interval=5
+
+# text mode
+mode=text
+
+# required sort key for display (image, rbd_name, reads, writes, io_source)
+sortkey=image
+
+# whether or not to reverse the sort sequence - true or false
+#reverse=true
+

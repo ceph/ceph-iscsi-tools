@@ -1,0 +1,86 @@
+.\" Manpage for gwtop
+.\" Contact pcuzner@redhat.com to correct errors or typos.
+.TH gwtop 8 "Ceph iSCSI Gateway Tools" "17 Oct 2016" "Ceph iSCSI Gateway Tools"
+.SH NAME
+gwtop \- monitor i/o performance of rbds exported through iscsi gateways
+.SH SYNOPSIS
+gwtop [-c | --config <config object> ] [-d | --debug] [-g|--gateways <gateway,gateway>] [-i|--interval \fB1\fR] [-m | --mode \fBtext\fR]
+[-r | --reverse] [-s | --sortkey \fBimage\fR] [-v | --version]
+.SH DESCRIPTION
+gwtop is an iostat-like command to aggregate i/o performance stats from
+multiple iscsi gateways into a single view. Data is sourced from performance
+co-pilot (pmcd), and aggregated by pool/rbd_image name. Since pmcd is the
+data source, you must ensure that pcp is installed on each iscsi gateway
+and the pmcd port (tcp/44321) is accessible.
+.PP
+The first part of the display provides an summary of the entire gateway
+configuration including cpu and network load, disk capacity and I/O load.
+.PP
+Each device detail line shows typical I/O metrics together with some addition
+fields to help understand nature of the I/O.
+.RS 3
+.PP
+\fBSrc\fR field shows the source of the I/O request, denoted by 'T' for this
+gateway, or 'O' for other gateway.
+.PP
+\fBClient\fR shows the client that has access to the rbd with it's current
+connection state '(CON)'.
+.RE
+.PP
+The current implementation supports text mode only. A future version will
+provide an ncurses based interface like 'top'.
+
+.SH OPTIONS
+-c, --config
+.RS 4
+The ceph iscsi configuration stores state in a rados object. By default, this
+object is called \fBgateway.conf\fR, stored in the rbd pool. If the configuration
+doesn't use defaults, you can provide the location of the configuration object
+here in the form <pool>/<object_name>.
+.RE
+
+-d, --debug
+.RS 4
+Turn on debug mode to increase runtime verbosity
+.RE
+
+-i, --interval
+.RS 4
+This is the interval between i/o sample updates from pmcd. The default is 1, but
+values between 1 and 9 are accepted.
+.RE
+
+-m, --mode
+.RS 4
+mode determines the way in which the collected data is displayed. 'text' mode is
+the only currently supported option, and it is the default.
+.RE
+
+-r, --reverse
+.RS 4
+the sequence of the device detail lines can be reversed with the -r option
+.RE
+
+-s, --sortkey
+.RS 4
+the sort sequence for the device detail can be changed by providing one of the
+following supported options; image (default), rbd_name, reads, writes, await and io_source
+.RE
+
+-v, --version
+.RS 4
+print the version number and exit
+.SH ENVIRONMENT
+gwtop supports a 'defaults file' placed in /etc/gwtop.rc or ~/.gwtop.rc. A sample file is provided
+in the /usr/share/doc/gwtop directory
+
+However, run time parameters take precedence of any file based defaults. If no defaults file exists
+and no gateways are provided through the -g option, gwtop will attempt to access the configuration
+object in rados(which is the default behaviour)
+
+.SH SEE ALSO
+iostat, dstat
+.SH BUGS
+No known bugs.
+.SH AUTHOR
+Paul Cuzner (pcuzner@redhat.com)
