@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-__author__ = 'paul'
+__author__ = 'Paul Cuzner'
 
 from time import sleep
 

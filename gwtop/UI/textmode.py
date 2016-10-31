@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-__author__ = 'paul'
+__author__ = 'Paul Cuzner'
+
 import time
 import threading
 import sys
@@ -77,7 +78,7 @@ class TextMode(threading.Thread):
                                 self.ceph_health,
                                 self.ceph_osds))
 
-        print("Pool/Image        Src  Device   Size     r/s     w/s    rMB/s     wMB/s"
+        print("Pool.Image        Src  Device   Size     r/s     w/s    rMB/s     wMB/s"
               "    await  r_await  w_await  Client")
 
         # Metrics shown sorted by pool/image name by default
