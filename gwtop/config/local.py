@@ -10,8 +10,8 @@ import os
 
 from rtslib_fb import root
 
-from gwtop.config.lio import add_rbd_maps
-from gwtop.config.generic import get_devid
+# from gwtop.config.lio import add_rbd_maps
+# from gwtop.config.generic import get_devid
 from ceph_iscsi_config.utils import get_pool_name
 
 def str2dict(kv_string, dict_key):
@@ -103,7 +103,11 @@ def get_lio_devices():
             pools[dm_num] = get_pool_name(pool_id=int(dm_num))
             pool_name = pools[dm_num]
 
-        key = "{}/{}".format(pool_name, image_name)
+        if '.' in image_name:
+            # assume new format names that have the pool name in already
+            key = image_name
+        else:
+            key = "{}.{}".format(pool_name, image_name)
 
         if key not in device_data:
 
@@ -116,8 +120,6 @@ def get_lio_devices():
                                 "rbd_name": rbd_name,
                                 "pool": pool_name,
                                 "image_name": image_name}
-
-    # add_rbd_maps(device_data)
 
     return device_data
 

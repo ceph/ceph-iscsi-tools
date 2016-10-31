@@ -121,10 +121,10 @@ class GatewayConfig(object):
                         pools[dm_num] = get_pool_name(pool_id=int(dm_num))
                         pool_name = pools[dm_num]
 
-                    key = "{}/{}".format(pool_name, image_name)
-
-                    # udev_path = m_lun.storage_object.udev_path
-                    # dev_id = get_devid(udev_path)
+                    if '.' in image_name:
+                        key = image_name
+                    else:
+                        key = "{}.{}".format(pool_name, image_name)
 
                     client_iqns = []
 
@@ -143,18 +143,6 @@ class GatewayConfig(object):
                     map[key] = client_shortname + suffix
 
         return map
-
-    #
-    # def _disk2client_mangler(self, devices):
-    #     map = {}
-    #     client_pfx = 'client-'
-    #     client_sfx = random.sample(xrange(len(devices)*10), len(devices))
-    #     ptr = 0
-    #     for devname in devices:
-    #         map[devname] = client_pfx + str(client_sfx[ptr])
-    #         ptr += 1
-    #
-    #     return map
 
     def _unique_clients(self):
         # determine the number of unique client names in the disk -> client dict
