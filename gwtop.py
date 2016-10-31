@@ -15,6 +15,8 @@ from gwtop.config.local import get_device_info
 from gwtop.config.lio import get_gateway_info
 from gwtop.UI.textmode import TextMode
 
+import ceph_iscsi_config.settings as settings
+
 # Supported config file locations/names
 CFG_FILES = ['/etc/gwtop.rc',
              os.path.join(os.path.expanduser('~'), '.gwtop.rc')
@@ -172,6 +174,8 @@ if __name__ == '__main__':
     fmt = logging.Formatter('%(message)s')
     ch.setFormatter(fmt)
     logger.addHandler(ch)
+
+    settings.init()
 
     # validate opts, then
     main()
