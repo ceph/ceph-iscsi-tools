@@ -27,6 +27,8 @@ class TextMode(threading.Thread):
         self.ceph = CephCluster()
         self.ceph_health = ''
         self.ceph_osds = 0
+        self.max_rbd_name = max([len(key) for key in self.config.devices])
+
 
     def sort_stats(self, in_dict):
         """
@@ -78,8 +80,8 @@ class TextMode(threading.Thread):
                                 self.ceph_health,
                                 self.ceph_osds))
 
-        print("Pool.Image        Src  Device   Size     r/s     w/s    rMB/s     wMB/s"
-              "    await  r_await  w_await  Client")
+        print("{:<{}}  Src  Device   Size     r/s     w/s    rMB/s     wMB/s"
+              "    await  r_await  w_await  Client".format("Pool.Image", self.max_rbd_name,))
 
         # Metrics shown sorted by pool/image name by default
 
@@ -90,8 +92,8 @@ class TextMode(threading.Thread):
             else:
                 client = ''
 
-            print("{:<16}  {:^3}  {:^6}   {:>4}   {:>5}   {:>5}   {:>6.2f}    {:>6.2f}   {:>6.2f}"
-                  "   {:>6.2f}   {:>6.2f}  {:<20}".format(devname,
+            print("{:<{}}  {:^3}  {:^6}   {:>4}   {:>5}   {:>5}   {:>6.2f}    {:>6.2f}   {:>6.2f}"
+                  "   {:>6.2f}   {:>6.2f}  {:<20}".format(devname, self.max_rbd_name,
                                                           disk_summary[devname].io_source,
                                                           disk_summary[devname].rbd_name,
                                                           bytes2human(disk_summary[devname].disk_size),
