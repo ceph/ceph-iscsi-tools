@@ -1,6 +1,6 @@
 Name:		ceph-iscsi-tools
 Version:	1.0
-Release:	2%{?dist}
+Release:	3%{?dist}
 Summary:	Tools to interact with the ceph's iscsi gateway nodes
 Group:		Applications/System
 License:	GPLv3
@@ -16,6 +16,7 @@ Requires: pcp
 Requires: python-pcp
 Requires: python-rtslib
 Requires: python-rados
+Requires: ceph-iscsi-config
 
 %description
 This package provides tools to help the admin interact with
@@ -49,6 +50,11 @@ gzip %{buildroot}%{_mandir}/man8/gwtop.8
 %{_mandir}/man8/gwtop.8.gz
 
 %changelog
+* Fri Oct 28 2016 Paul Cuzner <pcuzner@redhat.com> 1.0-3
+- size the output line to the maximum rbd image name
+- added the settings module from ceph_iscsi_config to enable non-default ceph names
+- add support for lun names of the format pool.image in lio
+
 * Mon Oct 17 2016 Paul Cuzner <pcuzner@redhat.com> 1.0-1
 - switched data source from pmcd's disk.partition to disk.dm
 - simplified the lookup of dm device to rbd name, subprocess call removed
