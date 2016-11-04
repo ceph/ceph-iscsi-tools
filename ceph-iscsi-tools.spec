@@ -1,6 +1,6 @@
 Name:		ceph-iscsi-tools
-Version:	1.0
-Release:	3%{?dist}
+Version:	1.1
+Release:	1%{?dist}
 Summary:	Tools to interact with the ceph's iscsi gateway nodes
 Group:		Applications/System
 License:	GPLv3
@@ -50,7 +50,7 @@ gzip %{buildroot}%{_mandir}/man8/gwtop.8
 %{_mandir}/man8/gwtop.8.gz
 
 %changelog
-* Fri Oct 28 2016 Paul Cuzner <pcuzner@redhat.com> 1.0-3
+* Fri Oct 28 2016 Paul Cuzner <pcuzner@redhat.com> 1.1-1
 - size the output line to the maximum rbd image name
 - added the settings module from ceph_iscsi_config to enable non-default ceph names
 - add support for lun names of the format pool.image in lio
