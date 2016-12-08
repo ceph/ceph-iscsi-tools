@@ -53,7 +53,7 @@ class RBDMap(object):
                 pool = fread('/sys/devices/rbd/{}/pool'.format(rbd_num))
                 image = fread('/sys/devices/rbd/{}/name'.format(rbd_num))
 
-                self.map[key] = {"rbd_name": "{}/{}".format(pool, image),
+                self.map[key] = {"rbd_name": "{}.{}".format(pool, image),
                                  "rbd_dev": rbd_device}
 
 
