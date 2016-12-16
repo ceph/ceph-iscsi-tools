@@ -22,7 +22,9 @@ CFG_FILES = ['/etc/gwtop.rc',
              os.path.join(os.path.expanduser('~'), '.gwtop.rc')
              ]
 
-def exception_handler(exception_type, exception, traceback, debug_hook=sys.excepthook):
+
+def exception_handler(exception_type, exception, traceback,
+                      debug_hook=sys.excepthook):
 
     if options.debug:
         debug_hook(exception_type, exception, traceback)
@@ -36,7 +38,8 @@ def main():
     config.devices = get_device_info()
 
     if not config.devices:
-        print "Error: No devices have been detected on this host, unable to continue"
+        print ("Error: No devices have been detected on this host, "
+               "unable to continue")
         sys.exit(12)
 
     config.gateway_config = get_gateway_info(options)
@@ -52,9 +55,11 @@ def main():
 
     if options.debug:
         if options.gateways:
-            print "Using gateway names from the config file(s)/run time parameters"
+            print ("Using gateway names from the config file(s)/run time "
+                   "parameters")
         else:
-            print "Using gateway names from the configuration object defined by the ansible modules"
+            print ("Using gateway names from the configuration object defined "
+                   "by the ansible modules")
 
         logger.info("Attempting to open connections to pmcd daemons on the {}"
                     " gateway node(s) ({})".format(len(config.gateway_config.gateways),
@@ -62,7 +67,11 @@ def main():
 
     # NB. interval must be a string, defaulting to 1 for testing
     for gw in config.gateway_config.gateways:
-        collector = PCPcollector(logger, sync_point, host=gw, interval=config.sample_interval)
+
+        collector = PCPcollector(logger,
+                                 sync_point,
+                                 host=gw,
+                                 interval=config.sample_interval)
 
         # check the state of the collector
         if collector.connected:
@@ -73,7 +82,7 @@ def main():
             del collector
             logger.error("Error: Unable to connect to pmcd daemon on {}".format(gw))
 
-    # Continue as long as we have at least 1 collector connected to a host's pmcd
+    # Continue as long as we have at least 1 collector connected to a pmcd
     if len(collector_threads) > 0:
 
         sync_point.set()
@@ -92,8 +101,9 @@ def main():
             # reset the terminal settings
             interface.reset()
     else:
-        logger.critical("Unable to continue, no pmcd's are available on the gateways to connect to. "
-                        "Is pmcd running on the gateways?")
+        logger.critical("Unable to continue, no pmcd's are available on the"
+                        " gateways to connect to. Is pmcd running on the "
+                        "gateways?")
 
 
 def get_options():
@@ -108,41 +118,56 @@ def get_options():
             if 'reverse' in defaults:
                 defaults['reverse'] = True if defaults['reverse'].lower() == 'true' else False
         else:
-            print("Config file detected, but the format is not supported. Ensure the file has a single "
-                  "section [config], and declares settings like 'gateways' or 'interval'")
+            print("Config file detected, but the format is not supported. "
+                  "Ensure the file has a single section [config], and "
+                  "declares settings like 'gateways' or 'interval'")
             sys.exit(12)
     else:
         # no config files detected, to seed the run time options
         pass
 
-    # Set up the runtime overrides, any of these could be provided by the cfg file(s)
-    parser = argparse.ArgumentParser(prog='igwtop', description='Show iSCSI gateway performance metrics')
+    # Set up the runtime overrides, any of these could be provided by the
+    # cfg file(s)
+    parser = argparse.ArgumentParser(prog='igwtop',
+                                     description='Show iSCSI gateway performance metrics')
     parser.add_argument('-c', '--config-object', type=str,
-                        help='pool and object name holding the gateway config object (pool/object_name)')
+                        help='pool and object name holding the gateway config '
+                             'object (pool/object_name)')
     parser.add_argument('-g', '--gateways', type=str,
                         help='comma separated iscsi gateway server names')
     parser.add_argument('-i', '--interval', type=int,
-                        help='monitoring interval (secs)', choices=range(1, 10))
-    parser.add_argument('-d', '--debug', action='store_true', default=False,
+                        choices=range(1, 10),
+                        help='monitoring interval (secs)')
+    parser.add_argument('-d', '--debug', action='store_true',
+                        default=False,
                         help='run with additional debug')
     parser.add_argument('-m', '--mode', type=str,
                         choices=(['text']),
                         help='output mode')
+    parser.add_argument('-p', '--provider', type=str,
+                        choices=['dm', 'lio'],
+                        default='dm',
+                        help='pcp provider type lio or dm')
     parser.add_argument('-s', '--sortkey', type=str,
-                        choices=['image', 'rbd_name', 'reads', 'writes', 'await', 'io_source'],
+                        choices=['image', 'rbd_name', 'reads', 'writes',
+                                 'await', 'io_source'],
                         default='image',
                         help='sort key sequence')
     parser.add_argument('-r', '--reverse', action='store_true', default=False,
                         help='use reverse sort when displaying the stats')
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s 0.5')
+    parser.add_argument('-v', '--version',
+                        action='version',
+                        version='%(prog)s 0.5')
 
     # use the defaults dict for the options
     parser.set_defaults(**defaults)
 
-    # create the opts object which combines the defaults from the config file(s) + runtime overrides
+    # create the opts object which combines the defaults from the config
+    # file(s) + runtime overrides
     opts = parser.parse_args()
 
-    # establish defaults, just in case they're missing from the config file(s) AND run time call
+    # establish defaults, just in case they're missing from the config
+    # file(s) AND run time call
     if not opts.interval:
         opts.interval = 1
     if not opts.mode:
@@ -156,7 +181,8 @@ def get_options():
 if __name__ == '__main__':
     options = get_options()
 
-    # Override the default exception handler to only show back traces in debug mode
+    # Override the default exception handler to only show back traces
+    # in debug mode
     sys.excepthook = exception_handler
 
 
