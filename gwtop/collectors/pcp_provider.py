@@ -10,14 +10,24 @@ import glob
 from rtslib_fb.utils import fread
 
 # group metrics
-IOSTAT_METRICS = ['disk.dm.read', 'disk.dm.read_bytes',
-                  'disk.dm.write', 'disk.dm.write_bytes',
-                  'disk.dm.read_rawactive', 'disk.dm.write_rawactive']
+DM_METRICS = ['disk.dm.read',
+              'disk.dm.read_bytes',
+              'disk.dm.write',
+              'disk.dm.write_bytes',
+              'disk.dm.read_rawactive',
+              'disk.dm.write_rawactive']
 
-NETWORK_METRICS = ['network.interface.in.bytes', 'network.interface.out.bytes']
+LIO_METRICS = ['lio.lun.iops',
+               'lio.lun.read_mb',
+               'lio.lun.write_mb']
+
+NETWORK_METRICS = ['network.interface.in.bytes',
+                   'network.interface.out.bytes']
 
 # single metric
-CPU_METRICS = ['kernel.all.cpu.idle', 'kernel.all.load', 'hinv.ncpu']
+CPU_METRICS = ['kernel.all.cpu.idle',
+               'kernel.all.load',
+               'hinv.ncpu']
 
 class CollectorError(Exception):
     pass
@@ -33,13 +43,15 @@ class RBDMap(object):
         self._get_map()
 
         if not self.map:
-            raise CollectorError("RBDMAP: Unable to create the dm -> rbd_name lookup table")
+            raise CollectorError("RBDMAP: Unable to create the "
+                                 "dm -> rbd_name lookup table")
 
     def _get_map(self):
         """
-        Convert dm devices into their pool/rbd_image name. All gateway nodes should see
-        the same rbds, and each rbd when mapped through device mapper will have the same
-        name, so this gives us a common reference point.
+        Convert dm devices into their pool/rbd_image name. All gateway nodes
+        should see the same rbds, and each rbd when mapped through device
+        mapper will have the same name, so this gives us a common reference
+        point.
         """
 
         dm_devices = glob.glob('/dev/mapper/[0-255]-*')
@@ -68,21 +80,14 @@ class IOstatOptions(pmapi.pmOptions):
         self.pmSetLongOptionHost()
         self.pmSetLongOptionInterval()
 
-
-class PCPextract(pmcc.MetricGroupPrinter):
-    """
-    Class based on the pcp-iostat example code that provides disk/network and cpu metrics for the given
-    node (thread)
-    """
+class PCPbase(pmcc.MetricGroupPrinter):
 
     NIC_BLACKLIST = ['lo', 'docker0']
     HDRcount = 0
-    device_regex = '[0-255]-[a-f,0-9]+'
 
     def __init__(self, metrics):
         pmcc.MetricGroupPrinter.__init__(self)
         self.metrics = metrics
-        self.rbds = RBDMap()
 
     def timeStampDelta(self, group):
         s = group.timestamp.tv_sec - group.prevTimestamp.tv_sec
@@ -99,6 +104,59 @@ class PCPextract(pmcc.MetricGroupPrinter):
     def prevVals(self, group, name):
         return dict(map(lambda x: (x[1], x[2]), group[name].netPrevValues))
 
+    def get_cpu_and_network(self, group, dt):
+
+        timestamp = group.contextCache.pmCtime(int(group.timestamp)).rstrip()
+        self.metrics.timestamp = timestamp
+
+        nic_list = self.instlist(group, 'network.interface.in.bytes')
+
+        # NIC metrics
+        c_nic_in_b = self.curVals(group, 'network.interface.in.bytes')
+        p_nic_in_b = self.prevVals(group, 'network.interface.in.bytes')
+        c_nic_out_b = self.curVals(group, 'network.interface.out.bytes')
+        p_nic_out_b = self.prevVals(group, 'network.interface.out.bytes')
+
+        tot_in = tot_out = 0
+        for nic in nic_list:
+            if nic in PCPDMextract.NIC_BLACKLIST:
+                continue
+            tot_in += (c_nic_in_b[nic] - p_nic_in_b[nic]) / dt
+            tot_out += (c_nic_out_b[nic] - p_nic_out_b[nic]) / dt
+
+        self.metrics.nic_bytes = {'in': tot_in, 'out': tot_out}
+
+        # CPU metrics
+        #
+        # get the number of cpu's on this host to calculate cpu utilisation
+        num_cpus = self.curVals(group, 'hinv.ncpu')['']
+
+        c_k_idle = float(self.curVals(group, 'kernel.all.cpu.idle')[''])
+        p_k_idle = float(self.prevVals(group, 'kernel.all.cpu.idle')[''])
+        cpu_multiplier = self.metrics.interval * 1000
+
+        idle = 100 * (float(c_k_idle - p_k_idle) / (num_cpus * cpu_multiplier))
+        self.metrics.cpu_idle_pct = idle if idle >= 0 else 0
+        busy = 100 - float(self.metrics.cpu_idle_pct)
+        self.metrics.cpu_busy_pct = busy if busy >= 0 else 0
+
+
+class PCPLIOextract(PCPbase):
+    pass
+
+
+class PCPDMextract(PCPbase):
+    """
+    Class based on the pcp-iostat example code that provides disk/network and
+    cpu metrics for the given node (thread)
+    """
+
+    device_regex = '[0-255]-[a-f,0-9]+'
+
+    def __init__(self, metrics):
+        PCPbase.__init__(self, metrics)
+        self.rbds = RBDMap()
+
     def report(self, manager):
         subtree = 'disk.dm'
 
@@ -106,13 +164,13 @@ class PCPextract(pmcc.MetricGroupPrinter):
 
         group = manager["gateways"]
 
-        nic_list = self.instlist(group, 'network.interface.in.bytes')
-
-        all_disks = self.instlist(group, subtree + '.read')    # just use reads to get all disk instance names
+        # just use reads to get all disk instance names
+        all_disks = self.instlist(group, subtree + '.read')
 
         # rbd device mapped for the gateway use the following naming convention
-        # <pool_id>-<rbd uid>
-        instlist = [disk_id for disk_id in all_disks if re.search(PCPextract.device_regex, disk_id) is not None]
+        # <pool_id>.<rbd uid>
+        instlist = [disk_id for disk_id in all_disks
+                    if re.search(PCPDMextract.device_regex, disk_id) is not None]
         # print "DEBUG - devices found %s " % instlist
 
         if group[subtree + '.read'].netPrevValues is None:
@@ -120,8 +178,7 @@ class PCPextract(pmcc.MetricGroupPrinter):
             return
 
         dt = self.timeStampDelta(group)
-
-        timestamp = group.contextCache.pmCtime(int(group.timestamp)).rstrip()
+        self.get_cpu_and_network(group, dt)
 
         # dm metrics
         c_r = self.curVals(group, subtree + '.read')
@@ -142,82 +199,49 @@ class PCPextract(pmcc.MetricGroupPrinter):
         c_wactive = self.curVals(group, subtree + '.write_rawactive')
         p_wactive = self.prevVals(group, subtree + '.write_rawactive')
 
-        # NIC metrics
-        c_nic_in_b = self.curVals(group, 'network.interface.in.bytes')
-        p_nic_in_b = self.prevVals(group, 'network.interface.in.bytes')
-        c_nic_out_b = self.curVals(group, 'network.interface.out.bytes')
-        p_nic_out_b = self.prevVals(group, 'network.interface.out.bytes')
+        # try:
+        for inst in sorted(instlist):
 
-        # CPU metrics
-        #
-        # load could be used for 1 minute/5minute/15minute data
-        # load_idle = self.curVals(group, 'kernel.all.load')
-
-        # get the number of cpu's on this host to calculate cpu utilisation
-        num_cpus = self.curVals(group, 'hinv.ncpu')['']
-
-        c_k_idle = float(self.curVals(group, 'kernel.all.cpu.idle')[''])
-        p_k_idle = float(self.prevVals(group, 'kernel.all.cpu.idle')[''])
-        cpu_multiplier = self.metrics.interval * 1000
-        self.metrics.timestamp = timestamp
-        idle = 100 * (float(c_k_idle - p_k_idle) / (num_cpus * cpu_multiplier))
-        self.metrics.cpu_idle_pct = idle if idle >= 0 else 0
-        busy = 100 - float(self.metrics.cpu_idle_pct)
-        self.metrics.cpu_busy_pct = busy if busy >= 0 else 0
-
-
-        # TODO : restrict this to only rbd devices...
-        try:
-            tot_in = tot_out = 0
-            for nic in nic_list:
-                if nic in PCPextract.NIC_BLACKLIST:
-                    continue
-                tot_in += (c_nic_in_b[nic] - p_nic_in_b[nic]) / dt
-                tot_out += (c_nic_out_b[nic] - p_nic_out_b[nic]) / dt
-
-            self.metrics.nic_bytes = {'in': tot_in, 'out': tot_out}
-
-            for inst in sorted(instlist):
-
-                try:
-                    # get pool/image name for the dm name from the lookup table
+            try:
+                # get pool/image name for the dm name from the lookup table
+                key = self.rbds.map[inst]['rbd_name']
+            except KeyError:
+                self.rbds.refresh()
+                if inst in self.rbds.map:
                     key = self.rbds.map[inst]['rbd_name']
-                except KeyError:
-                    self.rbds.refresh()
-                    if inst in self.rbds.map:
-                        key = self.rbds.map[inst]['rbd_name']
-                    else:
-                        raise CollectorError("PCPExtract: Unable to convert {} to a pool/image name".format(inst))
+                else:
+                    raise CollectorError("PCPExtract: Unable to convert "
+                                         "{} to a pool/image name".format(inst))
 
-                if key not in self.metrics.disk_stats:
-                    self.metrics.disk_stats[key] = DiskMetrics()
+            if key not in self.metrics.disk_stats:
+                self.metrics.disk_stats[key] = DiskMetrics()
 
-                self.metrics.disk_stats[key].dm_device = inst
-                self.metrics.disk_stats[key].read = (c_r[inst] - p_r[inst]) / dt
+            self.metrics.disk_stats[key].dm_device = inst
+            self.metrics.disk_stats[key].read = (c_r[inst] - p_r[inst]) / dt
 
-                self.metrics.disk_stats[key].write = (c_w[inst] - p_w[inst]) / dt
-                self.metrics.disk_stats[key].readkb = (c_rkb[inst] - p_rkb[inst]) / dt
-                self.metrics.disk_stats[key].writekb = (c_wkb[inst] - p_wkb[inst]) / dt
+            self.metrics.disk_stats[key].write = (c_w[inst] - p_w[inst]) / dt
+            self.metrics.disk_stats[key].readkb = (c_rkb[inst] - p_rkb[inst]) / dt
+            self.metrics.disk_stats[key].writekb = (c_wkb[inst] - p_wkb[inst]) / dt
 
-                tot_rios = (float)(c_r[inst] - p_r[inst])
-                tot_wios = (float)(c_w[inst] - p_w[inst])
-                tot_ios = (float)(tot_rios + tot_wios)
+            tot_rios = (float)(c_r[inst] - p_r[inst])
+            tot_wios = (float)(c_w[inst] - p_w[inst])
+            tot_ios = (float)(tot_rios + tot_wios)
 
-                self.metrics.disk_stats[key].await = (((c_ractive[inst] - p_ractive[inst]) +
-                                                       (c_wactive[inst] - p_wactive[inst]))
-                                                        / tot_ios) if tot_ios else 0.0
+            self.metrics.disk_stats[key].await = (((c_ractive[inst] - p_ractive[inst]) +
+                                                   (c_wactive[inst] - p_wactive[inst]))
+                                                    / tot_ios) if tot_ios else 0.0
 
-                self.metrics.disk_stats[key].r_await = ((c_ractive[inst] - p_ractive[inst])
-                                                         / tot_rios) if tot_rios else 0.0
+            self.metrics.disk_stats[key].r_await = ((c_ractive[inst] - p_ractive[inst])
+                                                     / tot_rios) if tot_rios else 0.0
 
-                self.metrics.disk_stats[key].w_await = ((c_wactive[inst] - p_wactive[inst])
-                                                         / tot_wios) if tot_wios else 0.0
+            self.metrics.disk_stats[key].w_await = ((c_wactive[inst] - p_wactive[inst])
+                                                     / tot_wios) if tot_wios else 0.0
 
-        except KeyError:
-            # ignore missing instance (from previous sample)
-            pass
-
-        pass
+        # except KeyError:
+        #     # ignore missing instance (from previous sample)
+        #     pass
+        #
+        # pass
 
 
 class PCPcollector(threading.Thread):
@@ -226,11 +250,16 @@ class PCPcollector(threading.Thread):
     collector for a given host
     """
 
-    def __init__(self, logger, sync_event, host='', interval='1'):
+    def __init__(self, logger, sync_event, host='', interval='1',
+                 pcp_type='dm'):
+
         threading.Thread.__init__(self)
         self.hostname = host
         self.start_me_up = sync_event
         self.logger = logger
+
+        collector_lookup = {'dm': PCPDMextract,
+                            'lio': PCPLIOextract}
 
         opts = IOstatOptions(host)
         self.context = None
@@ -240,7 +269,9 @@ class PCPcollector(threading.Thread):
         args_list = ['', '-h', host, '-t', str(interval)]
         try:
             self.manager = pmcc.MetricGroupManager.builder(opts, args_list)
-            self.manager["gateways"] = IOSTAT_METRICS + CPU_METRICS + NETWORK_METRICS
+            self.manager["gateways"] = (DM_METRICS +
+                                        CPU_METRICS +
+                                        NETWORK_METRICS)
             self.metrics = GatewayMetrics()
             self.metrics.cpu_busy_pct = 0
             self.metrics.cpu_idle_pct = 0
@@ -248,7 +279,10 @@ class PCPcollector(threading.Thread):
             self.metrics.timestamp = None
             self.metrics.disk_stats = {}
             self.metrics.nic_bytes = {'in': 0, 'out': 0}
-            self.manager.printer = PCPextract(self.metrics)
+
+            collector = collector_lookup[pcp_type]
+
+            self.manager.printer = collector(self.metrics)
 
             self.connected = True
         except pmapi.pmErr:
@@ -256,11 +290,8 @@ class PCPcollector(threading.Thread):
 
     def run(self):
         # grab the data and store in dict every second
-        self.logger.debug("pcp manager thread started for host {}".format(self.hostname))
+        self.logger.debug("pcp manager thread started for "
+                          "host {}".format(self.hostname))
 
         self.start_me_up.wait()
         self.manager.run()
-
-    def get_values(self):
-        # return values for this object to the caller
-        return self.stats
