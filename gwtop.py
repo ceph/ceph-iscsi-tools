@@ -71,7 +71,8 @@ def main():
         collector = PCPcollector(logger,
                                  sync_point,
                                  host=gw,
-                                 interval=config.sample_interval)
+                                 interval=config.sample_interval,
+                                 pcp_type=options.provider)
 
         # check the state of the collector
         if collector.connected:
