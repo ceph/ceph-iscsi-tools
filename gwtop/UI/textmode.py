@@ -27,7 +27,7 @@ class TextMode(threading.Thread):
         self.ceph = CephCluster()
         self.ceph_health = ''
         self.ceph_osds = 0
-        self.max_rbd_name = max([len(key) for key in self.config.devices])
+        self.max_dev_name = max([len(key) for key in self.config.devices])
 
 
     def sort_stats(self, in_dict):
@@ -45,7 +45,8 @@ class TextMode(threading.Thread):
             sorted_keys = sorted(in_dict, reverse=reverse_mode)
         else:
             sorted_keys = sorted(in_dict,
-                                 key=lambda keyname: getattr(in_dict[keyname], sort_key),
+                                 key=lambda keyname: getattr(in_dict[keyname],
+                                                             sort_key),
                                  reverse=reverse_mode)
 
         return sorted_keys
@@ -54,34 +55,46 @@ class TextMode(threading.Thread):
         """
         Display the aggregated stats to the console
         :param gw_stats: gateway metrics (cpu, network)
-        :param disk_summary: disk summary information (dict) indexed by pool/rbd_image
+        :param disk_summary: disk summary information (dict) indexed by
+        pool/rbd_image
         :return: nothing
         """
 
         num_gws = len(gw_stats.cpu_busy)
         desc = "Gateways" if num_gws > 1 else "Gateway"
         total_gateways = len(self.config.gateway_config.gateways)
+        total_disks = len(disk_summary.keys())
         gw_summary = "{}/{}".format(num_gws, total_gateways)
 
-        print("gwtop  {:>3} {:<8}   CPU% MIN:{:>3.0f} MAX:{:>3.0f}    Network Total In:{:>6}"
-              "  Out:{:>6}   {}".format(gw_summary,
-                                        desc,
-                                        gw_stats.min_cpu,
-                                        gw_stats.max_cpu,
-                                        bytes2human(gw_stats.total_net_in),
-                                        bytes2human(gw_stats.total_net_out),
-                                        gw_stats.timestamp))
+        # take the first disk we have to determine the pcp collector class
+        # used, then use the methods of this class for header and row
+        # detail layout
+        first_disk = disk_summary.itervalues().next()
+        collector = first_disk.collector
 
-        print("Capacity: {:>5}    IOPS: {:>5}   Clients:{:>3}   Ceph: {:<26}   "
-              "OSDs: {:>4}".format(
-                                bytes2human(gw_stats.total_capacity),
-                                gw_stats.total_iops,
-                                self.config.gateway_config.client_count,
-                                self.ceph_health,
-                                self.ceph_osds))
+        print("\ngwtop  {:>3} {:<8}   CPU% MIN:{:>3.0f} MAX:{:>3.0f}    "
+              "Network Total In:{:>6}  Out:{:>6}"
+              "   {}".format(gw_summary,
+                             desc,
+                             gw_stats.min_cpu,
+                             gw_stats.max_cpu,
+                             bytes2human(gw_stats.total_net_in),
+                             bytes2human(gw_stats.total_net_out),
+                             gw_stats.timestamp))
 
-        print("{:<{}}  Src  Device   Size     r/s     w/s    rMB/s     wMB/s"
-              "    await  r_await  w_await  Client".format("Pool.Image", self.max_rbd_name,))
+        print("Capacity:{:>5}    Disks:{:>4}   IOPS:{:>5}   Clients:{:>3}   Ceph: {:<16}   "
+              "OSDs:{:>4}".format(
+                                  bytes2human(gw_stats.total_capacity),
+                                  total_disks,
+                                  gw_stats.total_iops,
+                                  self.config.gateway_config.client_count,
+                                  self.ceph_health,
+                                  self.ceph_osds))
+
+        # Get the headings from the specific collector used for the device
+        # detail
+        headings = collector.headers(self.max_dev_name)
+        print(headings)
 
         # Metrics shown sorted by pool/image name by default
 
@@ -92,21 +105,11 @@ class TextMode(threading.Thread):
             else:
                 client = ''
 
-            print("{:<{}}  {:^3}  {:^6}   {:>4}   {:>5}   {:>5}   {:>6.2f}    {:>6.2f}   {:>6.2f}"
-                  "   {:>6.2f}   {:>6.2f}  {:<20}".format(devname, self.max_rbd_name,
-                                                          disk_summary[devname].io_source,
-                                                          disk_summary[devname].rbd_name,
-                                                          bytes2human(disk_summary[devname].disk_size),
-                                                          int(disk_summary[devname].tot_reads),
-                                                          int(disk_summary[devname].tot_writes),
-                                                          disk_summary[devname].tot_readkb/1024,
-                                                          disk_summary[devname].tot_writekb/1024,
-                                                          disk_summary[devname].max_await,
-                                                          disk_summary[devname].max_r_await,
-                                                          disk_summary[devname].max_w_await,
-                                                          client))
-        # put a blank line between iterations
-        print
+            device_row = collector.print_device_data(devname,
+                                                     self.max_dev_name,
+                                                     disk_summary[devname],
+                                                     client)
+            print(device_row)
 
     def reset(self):
         """
