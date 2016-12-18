@@ -4,22 +4,27 @@ import threading
 
 from pcp import pmapi, pmcc
 from gwtop.config.generic import DiskMetrics, GatewayMetrics
+from gwtop.utils.data import bytes2human
+
 import re
 import os
 import glob
 from rtslib_fb.utils import fread
 
 # group metrics
-DM_METRICS = ['disk.dm.read',
-              'disk.dm.read_bytes',
-              'disk.dm.write',
-              'disk.dm.write_bytes',
-              'disk.dm.read_rawactive',
-              'disk.dm.write_rawactive']
+DISK_METRICS = {"dm": ['disk.dm.read',
+                       'disk.dm.read_bytes',
+                       'disk.dm.write',
+                       'disk.dm.write_bytes',
+                       'disk.dm.read_rawactive',
+                       'disk.dm.write_rawactive'
+                       ],
+                "lio": ['lio.lun.iops',
+                        'lio.lun.read_mb',
+                        'lio.lun.write_mb'
+                        ]
+                 }
 
-LIO_METRICS = ['lio.lun.iops',
-               'lio.lun.read_mb',
-               'lio.lun.write_mb']
 
 NETWORK_METRICS = ['network.interface.in.bytes',
                    'network.interface.out.bytes']
@@ -142,7 +147,76 @@ class PCPbase(pmcc.MetricGroupPrinter):
 
 
 class PCPLIOextract(PCPbase):
-    pass
+
+    disk_attr = {
+                'iops': {'sum_method': 'sum'},
+                'read_mb': {'sum_method': 'sum'},
+                'write_mb': {'sum_method': 'sum'}
+                }
+
+    def __init__(self, metrics):
+        PCPbase.__init__(self, metrics)
+
+    def report(self, manager):
+        subtree = 'lio.lun'
+
+
+        group = manager["gateways"]
+
+        # just use iops to get all disk instance names
+        lun_list = self.instlist(group, subtree + '.iops')
+
+        if group[subtree + '.iops'].netPrevValues is None:
+            # need two fetches for the cur/prev deltas to work
+            return
+
+        dt = self.timeStampDelta(group)
+        self.get_cpu_and_network(group, dt)
+
+        # LIO metrics originally extracted from
+        # /sys/kernel/config/target/iscsi/<iqn>/tpgt_<n>/lun/lun_<n>/statistics
+        c_iops = self.curVals(group, subtree + '.iops')
+        p_iops = self.prevVals(group, subtree + '.iops')
+
+        c_rmb = self.curVals(group, subtree + '.read_mb')
+        p_rmb = self.prevVals(group, subtree + '.read_mb')
+
+        c_wmb = self.curVals(group, subtree + '.write_mb')
+        p_wmb = self.prevVals(group, subtree + '.write_mb')
+
+        # try:
+        for lun_name in sorted(lun_list):
+
+            if lun_name not in self.metrics.disk_stats:
+                self.metrics.disk_stats[lun_name] = DiskMetrics()
+
+            # self.metrics.disk_stats[key].dm_device = inst
+            self.metrics.disk_stats[lun_name].iops = (c_iops[lun_name] -
+                                                      p_iops[lun_name]) / dt
+
+            self.metrics.disk_stats[lun_name].read_mb = (c_rmb[lun_name] -
+                                                         p_rmb[lun_name]) / dt
+
+            self.metrics.disk_stats[lun_name].write_mb = (c_wmb[lun_name] -
+                                                          p_wmb[lun_name]) / dt
+
+    @classmethod
+    def headers(cls, max_rbd_name):
+        return("{:<{}}    Src    Size     iops     rMB/s     wMB/s"
+               "   Client".format("Pool.Image",
+                                  max_rbd_name))
+
+    @classmethod
+    def print_device_data(cls, devname, max_dev_name, disk_data, client):
+
+        return('{:<{}}    {:^3}    {:>4}    {:>5}    {:>6.2f}    '
+               '{:>6.2f}   {:<20}'.format(devname, max_dev_name,
+                                          disk_data.io_source,
+                                          bytes2human(disk_data.disk_size),
+                                          int(disk_data.tot_iops),
+                                          disk_data.tot_read_mb,
+                                          disk_data.tot_write_mb,
+                                          client))
 
 
 class PCPDMextract(PCPbase):
@@ -153,9 +227,45 @@ class PCPDMextract(PCPbase):
 
     device_regex = '[0-255]-[a-f,0-9]+'
 
+    disk_attr = {
+        'iops': {'sum_method': 'sum'},
+        'reads': {'sum_method': 'sum'},
+        'writes': {'sum_method': 'sum'},
+        'readkb': {'sum_method': 'sum'},
+        'writekb': {'sum_method': 'sum'},
+        'await': {'sum_method': 'max'},
+        'r_await': {'sum_method': 'max'},
+        'w_await': {'sum_method': 'max'}
+        }
+
     def __init__(self, metrics):
         PCPbase.__init__(self, metrics)
         self.rbds = RBDMap()
+
+    @classmethod
+    def headers(cls, max_rbd_name):
+        return("{:<{}}  Src  Device   Size     r/s     w/s    rMB/s     wMB/s"
+               "    await  r_await  w_await  Client".format("Pool.Image",
+                                                            max_rbd_name))
+
+    @classmethod
+    def print_device_data(cls, devname, max_rbd_name, disk_data, client):
+
+        return("{:<{}}  {:^3}  {:^6}   {:>4}   {:>5}   {:>5}   {:>6.2f}    "
+               "{:>6.2f}   {:>6.2f}   {:>6.2f}"
+               "   {:>6.2f}  {:<20}".format(devname, max_rbd_name,
+                                            disk_data.io_source,
+                                            disk_data.rbd_name,
+                                            bytes2human(disk_data.disk_size),
+                                            int(disk_data.tot_reads),
+                                            int(disk_data.tot_writes),
+                                            disk_data.tot_readkb / 1024,
+                                            disk_data.tot_writekb / 1024,
+                                            disk_data.max_await,
+                                            disk_data.max_r_await,
+                                            disk_data.max_w_await,
+                                            client))
+
 
     def report(self, manager):
         subtree = 'disk.dm'
@@ -216,10 +326,14 @@ class PCPDMextract(PCPbase):
             if key not in self.metrics.disk_stats:
                 self.metrics.disk_stats[key] = DiskMetrics()
 
-            self.metrics.disk_stats[key].dm_device = inst
-            self.metrics.disk_stats[key].read = (c_r[inst] - p_r[inst]) / dt
+            # self.metrics.disk_stats[key].dm_device = inst
+            self.metrics.disk_stats[key].reads = (c_r[inst] - p_r[inst]) / dt
 
-            self.metrics.disk_stats[key].write = (c_w[inst] - p_w[inst]) / dt
+            self.metrics.disk_stats[key].writes = (c_w[inst] - p_w[inst]) / dt
+
+            self.metrics.disk_stats[key].iops = self.metrics.disk_stats[key].reads + \
+                                                self.metrics.disk_stats[key].writes
+
             self.metrics.disk_stats[key].readkb = (c_rkb[inst] - p_rkb[inst]) / dt
             self.metrics.disk_stats[key].writekb = (c_wkb[inst] - p_wkb[inst]) / dt
 
@@ -229,19 +343,13 @@ class PCPDMextract(PCPbase):
 
             self.metrics.disk_stats[key].await = (((c_ractive[inst] - p_ractive[inst]) +
                                                    (c_wactive[inst] - p_wactive[inst]))
-                                                    / tot_ios) if tot_ios else 0.0
+                                                  / tot_ios) if tot_ios else 0.0
 
             self.metrics.disk_stats[key].r_await = ((c_ractive[inst] - p_ractive[inst])
-                                                     / tot_rios) if tot_rios else 0.0
+                                                    / tot_rios) if tot_rios else 0.0
 
             self.metrics.disk_stats[key].w_await = ((c_wactive[inst] - p_wactive[inst])
-                                                     / tot_wios) if tot_wios else 0.0
-
-        # except KeyError:
-        #     # ignore missing instance (from previous sample)
-        #     pass
-        #
-        # pass
+                                                    / tot_wios) if tot_wios else 0.0
 
 
 class PCPcollector(threading.Thread):
@@ -269,7 +377,7 @@ class PCPcollector(threading.Thread):
         args_list = ['', '-h', host, '-t', str(interval)]
         try:
             self.manager = pmcc.MetricGroupManager.builder(opts, args_list)
-            self.manager["gateways"] = (DM_METRICS +
+            self.manager["gateways"] = (DISK_METRICS[pcp_type] +
                                         CPU_METRICS +
                                         NETWORK_METRICS)
             self.metrics = GatewayMetrics()
@@ -280,7 +388,11 @@ class PCPcollector(threading.Thread):
             self.metrics.disk_stats = {}
             self.metrics.nic_bytes = {'in': 0, 'out': 0}
 
+            # set up the disk attributes to collect and summarise based on the
+            # provider type
             collector = collector_lookup[pcp_type]
+            self.disk_attr = collector.disk_attr
+            self.collector = collector
 
             self.manager.printer = collector(self.metrics)
 
