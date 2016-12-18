@@ -39,7 +39,7 @@ def summarize(config, pcp_threads):
 
     this_host = gethostname().split('.')[0]
 
-    # device will be of the form - pool/image_name
+    # device will be of the form - <pool>.<image_name>
     for dev in config.devices:
 
         summary = DiskSummary()
@@ -47,19 +47,21 @@ def summarize(config, pcp_threads):
         summary.rbd_name = config.devices[dev]['rbd_name']
         summary.io_source = ''
 
+        # process each collector thread's data for this device
         for collector in pcp_threads:
 
             if dev in collector.metrics.disk_stats:
-                summary.reads.append(collector.metrics.disk_stats[dev].read)
-                summary.writes.append(collector.metrics.disk_stats[dev].write)
-                summary.readkb.append(collector.metrics.disk_stats[dev].readkb)
-                summary.writekb.append(collector.metrics.disk_stats[dev].writekb)
-                summary.await.append(collector.metrics.disk_stats[dev].await)
-                summary.r_await.append(collector.metrics.disk_stats[dev].r_await)
-                summary.w_await.append(collector.metrics.disk_stats[dev].w_await)
 
-                combined_io = collector.metrics.disk_stats[dev].read + collector.metrics.disk_stats[dev].write
-                if combined_io > 0:
+                disk = collector.metrics.disk_stats[dev]
+
+                for attr in collector.disk_attr.keys():
+
+                    collector_obs = getattr(disk, attr)
+                    current = getattr(summary, attr)
+                    current.append(collector_obs)
+                    setattr(summary, attr, current)
+
+                if disk.iops > 0:
                     if collector.hostname == this_host:
                         # I/O is serviced (T)his gateway
                         summary.io_source = 'T'
@@ -67,8 +69,8 @@ def summarize(config, pcp_threads):
                         # I/O is serviced by (O)ther gateway
                         summary.io_source = 'O'
 
-            # some metrics we only gather during the first cycle through the collector
-            # threads
+            # some metrics we only gather during the first cycle through the
+            # collector threads
             if first_pass:
                 gw_stats.cpu_busy.append(collector.metrics.cpu_busy_pct)
                 gw_stats.net_in.append(collector.metrics.nic_bytes['in'])
@@ -76,22 +78,33 @@ def summarize(config, pcp_threads):
 
         first_pass = False
 
-        summary.tot_reads = sum(summary.reads) if len(summary.reads) > 0 else 0
-        summary.tot_writes = sum(summary.writes) if len(summary.writes) > 0 else 0
-        summary.tot_readkb = sum(summary.readkb) if len(summary.readkb) > 0 else 0
-        summary.tot_writekb = sum(summary.writekb) if len(summary.writekb) > 0 else 0
-        summary.max_await = max(summary.await) if len(summary.await) > 0 else 0
-        summary.max_r_await = max(summary.r_await) if len(summary.r_await) > 0 else 0
-        summary.max_w_await = max(summary.w_await) if len(summary.w_await) > 0 else 0
+        # roll up the summary data relevant to the specific collectors
+        # disk attributes
+        for attr_name in collector.disk_attr.keys():
+            attr_defn = collector.disk_attr[attr_name]
+            if attr_defn['sum_method'] == 'sum':
+                field_name = 'tot_{}'.format(attr_name)
+                setattr(summary, field_name, sum(getattr(summary, attr_name)))
+            elif attr_defn['sum_method'] == 'max':
+                field_name = 'max_{}'.format(attr_name)
+                current_value = getattr(summary, attr_name)
+                if len(current_value) > 0:
+                    setattr(summary, field_name, max(current_value))
+                else:
+                    setattr(summary, field_name, 0)
+
+        summary.collector = collector.collector
 
         dev_stats[dev] = summary
         gw_stats.total_capacity += int(summary.disk_size)
-        gw_stats.total_iops += int(summary.tot_reads + summary.tot_writes)
+        gw_stats.total_iops += int(summary.tot_iops)
 
     gw_stats.total_net_in = sum(gw_stats.net_in)
     gw_stats.total_net_out = sum(gw_stats.net_out)
     gw_stats.min_cpu = min(gw_stats.cpu_busy)
     gw_stats.max_cpu = max(gw_stats.cpu_busy)
+
+
 
     dt_parts = str(list(timestamps)[0]).split()
     if dt_parts[0] == 'None':
