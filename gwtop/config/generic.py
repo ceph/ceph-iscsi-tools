@@ -56,10 +56,11 @@ class HostSummary(object):
 
 class DiskSummary(object):
     """
-    Class defining objects providing disk summary statistics
+    Generic class defining disk summary attributes
     """
 
     def __init__(self):
+        self.iops = []
         self.reads = []
         self.writes = []
         self.readkb = []
@@ -67,6 +68,8 @@ class DiskSummary(object):
         self.await = []
         self.r_await = []
         self.w_await = []
+        self.read_mb = []
+        self.write_mb = []
 
     def __repr__(self):
         return str(self.__dict__)
