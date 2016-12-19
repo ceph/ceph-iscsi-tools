@@ -12,8 +12,10 @@ class NotTTYException(Exception): pass
 
 class TerminalFile:
     """
-    Class implementing methods for terminal handling, allowing keyboard scanning
-    Based on http://code.activestate.com/recipes/203830-checking-for-a-keypress-without-stop-the-execution/
+    Terminal handling class, enabling keyboard scanning
+
+    Based on 203830-checking-for-a-keypress-without-stop-the-execution
+    from http://code.activestate.com/recipes/
     """
 
     def __init__(self, infile):

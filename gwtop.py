@@ -26,6 +26,10 @@ CFG_FILES = ['/etc/gwtop.rc',
 def exception_handler(exception_type, exception, traceback,
                       debug_hook=sys.excepthook):
 
+    if term:
+        # reset the terminal config
+        term.reset()
+
     if options.debug:
         debug_hook(exception_type, exception, traceback)
     else:
@@ -91,6 +95,10 @@ def main():
         if options.mode == 'text':
             interface = TextMode(config, collector_threads)
             interface.daemon = True
+
+            # link the term variable to the textmode interface
+            global term
+            term = interface
 
         interface.start()
 
@@ -181,6 +189,8 @@ def get_options():
 
 if __name__ == '__main__':
     options = get_options()
+
+    term = None
 
     # Override the default exception handler to only show back traces
     # in debug mode
