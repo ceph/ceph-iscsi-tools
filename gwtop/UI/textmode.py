@@ -29,7 +29,6 @@ class TextMode(threading.Thread):
         self.ceph_osds = 0
         self.max_dev_name = max([len(key) for key in self.config.devices])
 
-
     def sort_stats(self, in_dict):
         """
         sort the disk_summary by any sort keys requested, returning the
@@ -97,7 +96,7 @@ class TextMode(threading.Thread):
         print(headings)
 
         # Metrics shown sorted by pool/image name by default
-
+        devices_shown = False
         for devname in self.sort_stats(disk_summary):
 
             if devname in self.config.gateway_config.diskmap:
@@ -105,11 +104,19 @@ class TextMode(threading.Thread):
             else:
                 client = ''
 
-            device_row = collector.print_device_data(devname,
-                                                     self.max_dev_name,
-                                                     disk_summary[devname],
-                                                     client)
-            print(device_row)
+            lun = disk_summary[devname]
+            if ((lun.tot_iops > 0 and self.config.opts.busy_only) or
+                not self.config.opts.busy_only):
+
+                device_row = collector.print_device_data(devname,
+                                                         self.max_dev_name,
+                                                         lun,
+                                                         client)
+                print(device_row)
+                devices_shown = True
+
+        if not devices_shown:
+            print "- No active LUNs -"
 
     def reset(self):
         """
@@ -136,7 +143,7 @@ class TextMode(threading.Thread):
 
     def run(self):
         """
-        Main method for the thread. Creeate the timers to refresh the data, and
+        Main method for the thread. Create the timers to refresh the data, and
         loop until the user hit's 'q' or CTRL-C
         """
 

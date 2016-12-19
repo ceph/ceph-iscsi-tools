@@ -137,8 +137,11 @@ def get_options():
 
     # Set up the runtime overrides, any of these could be provided by the
     # cfg file(s)
-    parser = argparse.ArgumentParser(prog='igwtop',
+    parser = argparse.ArgumentParser(prog='gwtop',
                                      description='Show iSCSI gateway performance metrics')
+    parser.add_argument('-b', '--busy-only', action='store_true',
+                        default=False,
+                        help='show only active devices (iops > 0)')
     parser.add_argument('-c', '--config-object', type=str,
                         help='pool and object name holding the gateway config '
                              'object (pool/object_name)')
