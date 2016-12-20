@@ -23,6 +23,7 @@ CFG_FILES = ['/etc/gwtop.rc',
              os.path.join(os.path.expanduser('~'), '.gwtop.rc')
              ]
 
+
 def setup_thread_excepthook():
     """
     Exceptions in threads don't trigger the normal sys.excepthook definition.
@@ -68,7 +69,7 @@ def exception_handler(exception_type, exception, traceback,
 def main():
     config = Config()
     config.opts = options
-    config.devices = get_device_info()
+    config.devices = device_map
 
     if not config.devices:
         print ("Error: No devices have been detected on this host, "
@@ -146,6 +147,12 @@ def main():
 
 def get_options():
 
+    num_user_luns = sum([1 for id in device_map
+                         if device_map[id]['lun_type'] == 'user'])
+
+    default_collector = 'dm' if num_user_luns == 0 else 'lio'
+
+
     # establish the defaults based on any present config file(s) config section
     defaults = {}
     config = ConfigParser()
@@ -187,7 +194,7 @@ def get_options():
                         help='output mode')
     parser.add_argument('-p', '--provider', type=str,
                         choices=['dm', 'lio'],
-                        default='dm',
+                        default=default_collector,
                         help='pcp provider type lio or dm')
     parser.add_argument('-s', '--sortkey', type=str,
                         choices=['image', 'rbd_name', 'reads', 'writes',
@@ -220,6 +227,11 @@ def get_options():
 
 
 if __name__ == '__main__':
+
+    # establish the device map early so we can determine which collector to
+    # use by default
+    device_map = get_device_info()
+
     options = get_options()
 
     term = None

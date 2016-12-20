@@ -137,7 +137,8 @@ def get_lio_devices():
                                        "rbd_name": rbd_name,
                                        "pool": pool_name,
                                        "image_name": image_name,
-                                       "stg_type": storage_type}
+                                       "stg_type": storage_type,
+                                       "lun_type": lun_type}
 
     return device_data
 
