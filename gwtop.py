@@ -8,6 +8,7 @@ import os
 
 from ConfigParser import ConfigParser
 from threading import Event
+import threading
 
 from gwtop.collectors.pcp_provider import PCPcollector
 from gwtop.config.generic import Config
@@ -21,6 +22,34 @@ import ceph_iscsi_config.settings as settings
 CFG_FILES = ['/etc/gwtop.rc',
              os.path.join(os.path.expanduser('~'), '.gwtop.rc')
              ]
+
+def setup_thread_excepthook():
+    """
+    Exceptions in threads don't trigger the normal sys.excepthook definition.
+    This function overrides the threading.Thread.__init__ method to allow
+    threads to adhere to the same exception handling as the main process.
+
+    This is a common approach, and is discussed here
+    http://bugs.python.org/issue1230540
+
+    """
+
+    init_original = threading.Thread.__init__
+
+    def init(self, *args, **kwargs):
+
+        init_original(self, *args, **kwargs)
+        run_original = self.run
+
+        def run_with_except_hook(*args2, **kwargs2):
+            try:
+                run_original(*args2, **kwargs2)
+            except Exception:
+                sys.excepthook(*sys.exc_info())
+
+        self.run = run_with_except_hook
+
+    threading.Thread.__init__ = init
 
 
 def exception_handler(exception_type, exception, traceback,
@@ -199,6 +228,7 @@ if __name__ == '__main__':
     # in debug mode
     sys.excepthook = exception_handler
 
+    setup_thread_excepthook()
 
     # define logging to the console
     # set the format to just the msg
