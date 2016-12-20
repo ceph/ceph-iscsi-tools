@@ -9,6 +9,7 @@ import glob
 import os
 
 from rtslib_fb import root
+from rtslib_fb.utils import fread
 
 # from gwtop.config.lio import add_rbd_maps
 # from gwtop.config.generic import get_devid
@@ -43,7 +44,8 @@ def get_device_info():
         combined with the metrics returned from pcp
     """
 
-    if glob.glob('/sys/kernel/config/target/core/iblock*'):
+    if glob.glob('/sys/kernel/config/target/core/iblock*') or \
+            glob.glob('/sys/kernel/config/target/core/user*'):
         return get_lio_devices()
     else:
         # testing only really - should remove in the future
@@ -89,37 +91,53 @@ def get_lio_devices():
     # multiple tpgs - so we look out for that
     for lun in lio_root.luns:
 
-        dm_id = os.path.basename(lun.storage_object.udev_path)
-        dm_num = dm_id.split('-')[0]
+        # plugin will show user or block
+        lun_type = lun.storage_object.plugin
 
-        dev_path = lun.storage_object.path
-        # '/sys/kernel/config/target/core/iblock_0/ansible3'
-        iblock_name = dev_path.split('/')[-2]
+        if lun_type == 'block':
+            dm_id = os.path.basename(lun.storage_object.udev_path)
+            dm_num = dm_id.split('-')[0]
+
+            dev_path = lun.storage_object.path
+            # '/sys/kernel/config/target/core/iblock_0/ansible3'
+            iblock_name = dev_path.split('/')[-2]
+            rbd_name = 'rbd{}'.format(iblock_name.split('_')[1])
+
+            if dm_num in pools:
+                pool_name = pools[dm_num]
+            else:
+                pools[dm_num] = get_pool_name(pool_id=int(dm_num))
+                pool_name = pools[dm_num]
+
+            storage_type = 'rbd'
+
+        elif lun_type == 'user':
+            rbd_name = ''
+            rbd_info = fread(os.path.join(lun.storage_object.path, 'info'))
+            cfg_ptr = rbd_info.find('Config:')
+
+            # cfg_data looks something like
+            # rbd/iscsiTest/gprfc095-iscsiTest-20
+            cfg_data = rbd_info[cfg_ptr:].split()[1]
+            storage_type, pool_name, image_name = cfg_data.split('/')
+
+        else:
+            raise ValueError("Unknown LUN type encountered with "
+                             "{}".format(lun.storage_object.name))
 
         image_name = lun.storage_object.name
-        if dm_num in pools:
-            pool_name = pools[dm_num]
-        else:
-            pools[dm_num] = get_pool_name(pool_id=int(dm_num))
-            pool_name = pools[dm_num]
+        image_size = lun.storage_object.size
+        wwn = lun.storage_object.wwn
 
-        if '.' in image_name:
-            # assume new format names that have the pool name in already
-            key = image_name
-        else:
-            key = "{}.{}".format(pool_name, image_name)
+        # Each image name is assumed to be unique
+        if image_name not in device_data:
 
-        if key not in device_data:
-
-            rbd_name = 'rbd{}'.format(iblock_name.split('_')[1])
-            image_size = lun.storage_object.size
-            wwn = lun.storage_object.wwn
-
-            device_data[key] = {"size": image_size,
-                                "wwn": wwn,
-                                "rbd_name": rbd_name,
-                                "pool": pool_name,
-                                "image_name": image_name}
+            device_data[image_name] = {"size": image_size,
+                                       "wwn": wwn,
+                                       "rbd_name": rbd_name,
+                                       "pool": pool_name,
+                                       "image_name": image_name,
+                                       "stg_type": storage_type}
 
     return device_data
 
