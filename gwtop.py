@@ -228,6 +228,8 @@ def get_options():
 
 if __name__ == '__main__':
 
+    settings.init()
+
     # establish the device map early so we can determine which collector to
     # use by default
     device_map = get_device_info()
@@ -257,7 +259,4 @@ if __name__ == '__main__':
     ch.setFormatter(fmt)
     logger.addHandler(ch)
 
-    settings.init()
-
-    # validate opts, then
     main()
