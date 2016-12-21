@@ -213,7 +213,7 @@ class PCPLIOextract(PCPbase):
                '{:>6.2f}   {:<20}'.format(devname, max_dev_name,
                                           disk_data.io_source,
                                           bytes2human(disk_data.disk_size),
-                                          int(disk_data.tot_iops),
+                                          int(round(disk_data.tot_iops)),
                                           disk_data.tot_read_mb,
                                           disk_data.tot_write_mb,
                                           client))
