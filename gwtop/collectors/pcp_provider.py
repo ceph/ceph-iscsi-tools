@@ -31,7 +31,9 @@ NETWORK_METRICS = ['network.interface.in.bytes',
 
 # single metric
 CPU_METRICS = ['kernel.all.cpu.idle',
-               'kernel.all.load',
+               'kernel.all.cpu.sys',
+               'kernel.all.cpu.user',
+               'kernel.all.cpu.intr',
                'hinv.ncpu']
 
 class CollectorError(Exception):
@@ -135,15 +137,24 @@ class PCPbase(pmcc.MetricGroupPrinter):
         #
         # get the number of cpu's on this host to calculate cpu utilisation
         num_cpus = self.curVals(group, 'hinv.ncpu')['']
-
-        c_k_idle = float(self.curVals(group, 'kernel.all.cpu.idle')[''])
-        p_k_idle = float(self.prevVals(group, 'kernel.all.cpu.idle')[''])
         cpu_multiplier = self.metrics.interval * 1000
 
-        idle = 100 * (float(c_k_idle - p_k_idle) / (num_cpus * cpu_multiplier))
-        self.metrics.cpu_idle_pct = idle if idle >= 0 else 0
-        busy = 100 - float(self.metrics.cpu_idle_pct)
-        self.metrics.cpu_busy_pct = busy if busy >= 0 else 0
+        c_k_sys = float(self.curVals(group, 'kernel.all.cpu.sys')[''])
+        p_k_sys = float(self.prevVals(group, 'kernel.all.cpu.sys')[''])
+        c_k_user = float(self.curVals(group, 'kernel.all.cpu.user')[''])
+        p_k_user = float(self.prevVals(group, 'kernel.all.cpu.user')[''])
+        c_k_intr = float(self.curVals(group, 'kernel.all.cpu.intr')[''])
+        p_k_intr = float(self.prevVals(group, 'kernel.all.cpu.intr')[''])
+
+        used = []
+        used.append(
+            100 * (float(c_k_sys - p_k_sys) / (num_cpus * cpu_multiplier)))
+        used.append(
+            100 * (float(c_k_user - p_k_user) / (num_cpus * cpu_multiplier)))
+        used.append(
+            100 * (float(c_k_intr - p_k_intr) / (num_cpus * cpu_multiplier)))
+
+        self.metrics.cpu_busy_pct = int(round(sum(used)))
 
 
 class PCPLIOextract(PCPbase):
