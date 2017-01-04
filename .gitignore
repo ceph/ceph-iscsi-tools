@@ -1,5 +1,5 @@
 .idea
-.pyc
-.pyo
+*.pyc
+*.pyo
 non-git/
 
