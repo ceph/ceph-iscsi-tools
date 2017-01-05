@@ -27,7 +27,7 @@ class StripExtension(distutils.command.install_scripts.install_scripts):
 
 setup(
     name="gwtop",
-    version="0.1b",
+    version="2.0",
     description="'top' like performance tool for ceph iscsi gateway nodes",
     long_description=long_description,
     author="Paul Cuzner",
