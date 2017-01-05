@@ -1,42 +1,55 @@
 .\" Manpage for gwtop
 .\" Contact pcuzner@redhat.com to correct errors or typos.
-.TH gwtop 8 "Ceph iSCSI Gateway Tools" "17 Oct 2016" "Ceph iSCSI Gateway Tools"
+.TH gwtop 8 "Ceph iSCSI Gateway Tools" "20 Dec 2016" "Ceph iSCSI Gateway Tools"
 .SH NAME
 gwtop \- monitor i/o performance of rbds exported through iscsi gateways
 .SH SYNOPSIS
-gwtop [-c | --config <config object> ] [-d | --debug] [-g|--gateways <gateway,gateway>] [-i|--interval \fB1\fR] [-m | --mode \fBtext\fR]
+gwtop [-b | --busy-only] [-c | --config {config object} ] [-d | --debug]
+[-g | --gateways <gateway,gateway>] [-i|--interval \fB1\fR]
+[-m | --mode \fBtext\fR] [-p | --provider {dm|lio}]
 [-r | --reverse] [-s | --sortkey \fBimage\fR] [-v | --version]
 .SH DESCRIPTION
 gwtop is an iostat-like command to aggregate i/o performance stats from
 multiple iscsi gateways into a single view. Data is sourced from performance
-co-pilot (pmcd), and aggregated by pool/rbd_image name. Since pmcd is the
+co-pilot (pmcd), and aggregated by rbd_image name. Since pmcd is the
 data source, you must ensure that pcp is installed on each iscsi gateway
 and the pmcd port (tcp/44321) is accessible.
 .PP
-The first part of the display provides an summary of the entire gateway
+The metrics shown are sourced from different pcp domain agents (PMDA's), based
+on the disk type defined to LIO. For user backed storage (i.e. TCMU), metrics
+are provided by the pcp-pmda-lio agent, whereas for krbd/device-mapper storage,
+standard pcp-pmda-linux stats are used.
+.PP
+The first part of the display provides a summary of the entire gateway
 configuration including cpu and network load, disk capacity and I/O load.
 .PP
 Each device detail line shows typical I/O metrics together with some addition
-fields to help understand nature of the I/O.
+fields to help understand the source of the I/O.
 .RS 3
 .PP
 \fBSrc\fR field shows the source of the I/O request, denoted by 'T' for this
 gateway, or 'O' for other gateway.
 .PP
-\fBClient\fR shows the client that has access to the rbd with it's current
-connection state '(CON)'.
+\fBClient\fR shows the client that has access to the device. If the client is
+connected to the local gateway, a suffix of '(CON)' is appended to the client
+name.
 .RE
 .PP
 The current implementation supports text mode only. A future version will
 provide an ncurses based interface like 'top'.
 
 .SH OPTIONS
+-b, --busy-only
+.RS 4
+Only show busy devices that are servicing I/O requests (IOPS > 0)
+.RE
+
 -c, --config
 .RS 4
 The ceph iscsi configuration stores state in a rados object. By default, this
-object is called \fBgateway.conf\fR, stored in the rbd pool. If the configuration
-doesn't use defaults, you can provide the location of the configuration object
-here in the form <pool>/<object_name>.
+object is called \fBgateway.conf\fR, stored in the rbd pool. If the
+configuration doesn't use defaults, you can provide the location of the
+configuration object here in the form <pool>/<object_name>.
 .RE
 
 -d, --debug
@@ -44,16 +57,29 @@ here in the form <pool>/<object_name>.
 Turn on debug mode to increase runtime verbosity
 .RE
 
--i, --interval
+-g, --gateways {gateway-1,gateway-2,...}
 .RS 4
-This is the interval between i/o sample updates from pmcd. The default is 1, but
-values between 1 and 9 are accepted.
+Use the supplied list of gateways as the source for the IO metrics
 .RE
 
--m, --mode
+
+-i, --interval
 .RS 4
-mode determines the way in which the collected data is displayed. 'text' mode is
-the only currently supported option, and it is the default.
+This is the interval between i/o sample updates from pmcd. The default is 1,
+but values between 1 and 9 are accepted.
+.RE
+
+-m, --mode {\fBtext\fR}
+.RS 4
+mode determines the way in which the collected data is displayed. 'text' mode
+is the only currently supported option, and it is the default.
+.RE
+
+-p, --provider {dm|lio}
+.RS 4
+PCP provider override allowing you to switch between disk (dm) or LIO (lio)
+metric sources. By default, gwtop looks at the LIO configuration and chooses
+the LIO provider if there are user backed devices within the configuration.
 .RE
 
 -r, --reverse
@@ -63,20 +89,28 @@ the sequence of the device detail lines can be reversed with the -r option
 
 -s, --sortkey
 .RS 4
-the sort sequence for the device detail can be changed by providing one of the
-following supported options; image (default), rbd_name, reads, writes, await and io_source
+the device detail sort sequence can be changed depending on the type of pcp
+provider being used. With a 'dm' pcp provider, the following fields may be used;
+image (default), rbd_name, reads, writes, await and io_source. For an lio pcp
+provider you may sort by; image(default), iops, tot_read_mb or tot_write_mb
+
 .RE
 
 -v, --version
 .RS 4
 print the version number and exit
 .SH ENVIRONMENT
-gwtop supports a 'defaults file' placed in /etc/gwtop.rc or ~/.gwtop.rc. A sample file is provided
-in the /usr/share/doc/gwtop directory
+gwtop supports a 'defaults file' placed in /etc/gwtop.rc or ~/.gwtop.rc. A
+sample file is provided in the /usr/share/doc/gwtop directory. Run time
+parameters take precedence over settings defined in the 'rc' file.
 
-However, run time parameters take precedence of any file based defaults. If no defaults file exists
-and no gateways are provided through the -g option, gwtop will attempt to access the configuration
-object in rados(which is the default behaviour)
+By default, gwtop will use the rados configuration object (-c) to determine the
+gateways to connect to. You may however, use the -g override or define the
+gateways in the 'rc' file if desired.
+
+The performance metrics are aggregated based on timestamp. You must therefore
+ensure that each gateway is synchronised to a reliable time source. Performance
+metrics with different timestamps will prevent the display from refreshing.
 
 .SH SEE ALSO
 iostat, dstat
@@ -84,3 +118,5 @@ iostat, dstat
 No known bugs.
 .SH AUTHOR
 Paul Cuzner (pcuzner@redhat.com)
+.SH REPORTING BUGS
+Report bugs via <https://github.com/pcuzner/ceph-iscsi-tools/issues>
