@@ -152,6 +152,10 @@ def get_options():
 
     default_collector = 'dm' if num_user_luns == 0 else 'lio'
 
+    sort_fields = {"dm": ['image', 'rbd_name', 'reads', 'writes',
+                          'await', 'io_source'],
+                   "lio": ['image', 'io_source', 'tot_read_mb',
+                           'tot_write_mb']}
 
     # establish the defaults based on any present config file(s) config section
     defaults = {}
@@ -197,15 +201,14 @@ def get_options():
                         default=default_collector,
                         help='pcp provider type lio or dm')
     parser.add_argument('-s', '--sortkey', type=str,
-                        choices=['image', 'rbd_name', 'reads', 'writes',
-                                 'await', 'io_source'],
                         default='image',
-                        help='sort key sequence')
+                        help='sort key field name (dependent upon provider - '
+                             'see man page for more info)')
     parser.add_argument('-r', '--reverse', action='store_true', default=False,
                         help='use reverse sort when displaying the stats')
     parser.add_argument('-v', '--version',
                         action='version',
-                        version='%(prog)s 0.5')
+                        version='%(prog)s 2.0')
 
     # use the defaults dict for the options
     parser.set_defaults(**defaults)
@@ -222,6 +225,15 @@ def get_options():
         opts.mode = 'text'
     if not opts.config_object:
         opts.config_object = 'rbd/gateway.conf'
+
+    # if the sort key is not the default, validate it against the
+    # specific pcp providers sort fields list
+    if opts.sortkey is not 'image':
+        if opts.sortkey not in sort_fields[opts.provider]:
+            print "Invalid sort key provided for the requested pcp provider"
+            print "For {}, the options are {}".format(opts.provider,
+                                                      sort_fields[opts.provider])
+            sys.exit(12)
 
     return opts
 
