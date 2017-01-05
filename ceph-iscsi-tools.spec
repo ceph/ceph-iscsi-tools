@@ -1,5 +1,5 @@
 Name:		ceph-iscsi-tools
-Version:	1.1
+Version:	2.0
 Release:	1%{?dist}
 Summary:	Tools to interact with the ceph's iscsi gateway nodes
 Group:		Applications/System
@@ -7,16 +7,17 @@ License:	GPLv3
 
 URL:		https://github.com/pcuzner/ceph-iscsi-tools
 Source0:	https://github.com/pcuzner/%{name}/archive/%{version}/%{name}-%{version}.tar.gz
-BuildArch:      noarch
+BuildArch:  noarch
 
 BuildRequires: python2-devel
 BuildRequires: python-setuptools
 
-Requires: pcp
-Requires: python-pcp
-Requires: python-rtslib
-Requires: python-rados
-Requires: ceph-iscsi-config
+Requires: pcp >= 3.11
+Requires: python-pcp >= 3.11
+Requires: python-rtslib >= 2.1
+Requires: python-rados >= 10.2.2
+Requires: ceph-iscsi-config >= 2.0
+Requires: pcp-pmda-lio >= 1.0
 
 %description
 This package provides tools to help the admin interact with
@@ -50,6 +51,28 @@ gzip %{buildroot}%{_mandir}/man8/gwtop.8
 %{_mandir}/man8/gwtop.8.gz
 
 %changelog
+* Tue Dec 20 2016 Paul Cuzner <pcuzner@redhat.com> 2.0-1
+- added provider runtime option (dm or lio) to determine the metrics
+- PCP collector restructured to support LIO and LINUX pmda providers
+- Added collector for LIO stats (pcp-pmda-lio)
+- Added -p switch on invocation to use the lio statistics
+- output formatting now an attribute of the relevant pcp collector class
+- added disk count to summary line
+- added reset of terminal if an exception occurs during textmode run
+- added -b switch to restrict display to only busy LUNs
+- catch thread exceptions within the generic exception_handler function
+- default pcp collector is chosen based on the current LUNs defined to LIO
+- fix rounding issue on LIO iops stats display
+- fix cpu usage calculation (rounding errors seen in 24c configurations)
+- man page updates
+- validate sort key request against the pcp provider type
+
+
+* Thu Dec 08 2016 Paul Cuzner <pcuzner@redhat.com> 1.1-5
+- fix issue with missing disk perf stats due to mismatch in disk names
+- fix client count
+- use dns name for the client name if the client is connected
+
 * Fri Oct 28 2016 Paul Cuzner <pcuzner@redhat.com> 1.1-1
 - size the output line to the maximum rbd image name
 - added the settings module from ceph_iscsi_config to enable non-default ceph names
