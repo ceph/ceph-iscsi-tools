@@ -258,7 +258,7 @@ if __name__ == '__main__':
 
     # define logging to the console
     # set the format to just the msg
-    logger = logging.getLogger("igwtop")
+    logger = logging.getLogger("gwtop")
     logger.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
 
