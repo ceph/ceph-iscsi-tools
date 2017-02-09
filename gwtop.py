@@ -152,9 +152,9 @@ def get_options():
 
     default_collector = 'dm' if num_user_luns == 0 else 'lio'
 
-    sort_fields = {"dm": ['image', 'rbd_name', 'reads', 'writes',
+    sort_fields = {"dm": ['image', 'iops', 'rbd_name', 'reads', 'writes',
                           'await', 'io_source'],
-                   "lio": ['image', 'io_source', 'tot_read_mb',
+                   "lio": ['image', 'iops', 'io_source', 'tot_read_mb',
                            'tot_write_mb']}
 
     # establish the defaults based on any present config file(s) config section
