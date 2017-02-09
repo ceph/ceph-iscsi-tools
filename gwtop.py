@@ -185,14 +185,18 @@ def get_options():
     parser.add_argument('-c', '--config-object', type=str,
                         help='pool and object name holding the gateway config '
                              'object (pool/object_name)')
+    parser.add_argument('-d', '--debug', action='store_true',
+                        default=False,
+                        help='run with additional debug')
     parser.add_argument('-g', '--gateways', type=str,
                         help='comma separated iscsi gateway server names')
     parser.add_argument('-i', '--interval', type=int,
                         choices=range(1, 10),
                         help='monitoring interval (secs)')
-    parser.add_argument('-d', '--debug', action='store_true',
-                        default=False,
-                        help='run with additional debug')
+    parser.add_argument('-l', '--limit', type=int,
+                        default=9999,
+                        help='sepcifiy the number of devices to show per '
+                             'sample iteration')
     parser.add_argument('-m', '--mode', type=str,
                         choices=(['text']),
                         help='output mode')
@@ -204,6 +208,9 @@ def get_options():
                         default='image',
                         help='sort key field name (dependent upon provider - '
                              'see man page for more info)')
+    parser.add_argument('-t', '--top-10', action='store_true',
+                        default=False,
+                        help='show the top 10 LUNs with highest iops')
     parser.add_argument('-r', '--reverse', action='store_true', default=False,
                         help='use reverse sort when displaying the stats')
     parser.add_argument('-v', '--version',
@@ -234,6 +241,11 @@ def get_options():
             print "For {}, the options are {}".format(opts.provider,
                                                       sort_fields[opts.provider])
             sys.exit(12)
+
+    if opts.top_10:
+        opts.sortkey = 'iops'
+        opts.limit = 10
+        opts.reverse = True
 
     return opts
 

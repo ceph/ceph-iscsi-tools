@@ -95,10 +95,22 @@ image (default), rbd_name, reads, writes, await and io_source. For an lio pcp
 provider you may sort by; image(default), iops, tot_read_mb or tot_write_mb
 
 .RE
+-t, --top-10
+.RS 4
+show the top 10 busiest LUNs sorted by descending IOPS
+.RE
 
 -v, --version
 .RS 4
 print the version number and exit
+.RE
+.SH EXAMPLES
+
+gwtop -t
+.RS 4
+Show the top 10 performace metrics for all devices sorted by descending IOPS (i.e.
+busiest first)
+.RE
 .SH ENVIRONMENT
 gwtop supports a 'defaults file' placed in /etc/gwtop.rc or ~/.gwtop.rc. A
 sample file is provided in the /usr/share/doc/gwtop directory. Run time

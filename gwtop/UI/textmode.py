@@ -97,6 +97,7 @@ class TextMode(threading.Thread):
 
         # Metrics shown sorted by pool/image name by default
         devices_shown = False
+        devices_count = 0
         for devname in self.sort_stats(disk_summary):
 
             if devname in self.config.gateway_config.diskmap:
@@ -108,12 +109,17 @@ class TextMode(threading.Thread):
             if ((lun.tot_iops > 0 and self.config.opts.busy_only) or
                 not self.config.opts.busy_only):
 
-                device_row = collector.print_device_data(devname,
-                                                         self.max_dev_name,
-                                                         lun,
-                                                         client)
-                print(device_row)
-                devices_shown = True
+                # eligible to display, so just check the limit set
+                devices_count += 1
+                if devices_count <= self.config.opts.limit:
+
+                    device_row = collector.print_device_data(devname,
+                                                             self.max_dev_name,
+                                                             lun,
+                                                             client)
+                    print(device_row)
+                    devices_shown = True
+
 
         if not devices_shown:
             print "- No active LUNs -"
