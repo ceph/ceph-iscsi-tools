@@ -4,6 +4,7 @@ __author__ = 'Paul Cuzner'
 import time
 import threading
 import sys
+import re
 
 from gwtop.utils.kbd import TerminalFile
 from gwtop.utils.data import bytes2human
@@ -113,16 +114,25 @@ class TextMode(threading.Thread):
                 devices_count += 1
                 if devices_count <= self.config.opts.limit:
 
-                    device_row = collector.print_device_data(devname,
-                                                             self.max_dev_name,
-                                                             lun,
-                                                             client)
-                    print(device_row)
-                    devices_shown = True
+                    if re.search(self.config.opts.device_filter,
+                                 devname):
+
+                        device_row = collector.print_device_data(devname,
+                                                                 self.max_dev_name,
+                                                                 lun,
+                                                                 client)
+                        print(device_row)
+                        devices_shown = True
 
 
         if not devices_shown:
-            print "- No active LUNs -"
+            if self.config.opts.device_filter == ".*":
+                filter_text = ""
+            else:
+                filter_text = "(device filter : {})".format(self.config.opts.device_filter)
+
+            print("- No active LUNs {}".format(filter_text))
+
 
     def reset(self):
         """

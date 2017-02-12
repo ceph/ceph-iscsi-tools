@@ -5,6 +5,7 @@ import time
 import sys
 import logging
 import os
+import re
 
 from ConfigParser import ConfigParser
 from threading import Event
@@ -145,6 +146,16 @@ def main():
                         "gateways?")
 
 
+def valid_filter(dev_filter="*"):
+
+    try:
+        re.compile(dev_filter)
+    except re.error:
+        return False
+    else:
+        return True
+
+
 def get_options():
 
     num_user_luns = sum([1 for id in device_map
@@ -185,9 +196,13 @@ def get_options():
     parser.add_argument('-c', '--config-object', type=str,
                         help='pool and object name holding the gateway config '
                              'object (pool/object_name)')
-    parser.add_argument('-d', '--debug', action='store_true',
+    parser.add_argument('--debug', action='store_true',
                         default=False,
                         help='run with additional debug')
+    parser.add_argument('-d', '--device-filter', type=str,
+                        default='.*',
+                        help='device name filter (default is .* i.e. '
+                             'everything!)')
     parser.add_argument('-g', '--gateways', type=str,
                         help='comma separated iscsi gateway server names')
     parser.add_argument('-i', '--interval', type=int,
@@ -237,10 +252,16 @@ def get_options():
     # specific pcp providers sort fields list
     if opts.sortkey is not 'image':
         if opts.sortkey not in sort_fields[opts.provider]:
-            print "Invalid sort key provided for the requested pcp provider"
-            print "For {}, the options are {}".format(opts.provider,
-                                                      sort_fields[opts.provider])
+            print("Invalid sort key provided for the requested pcp provider")
+            print("For {}, the options are {}".format(opts.provider,
+                                                      sort_fields[opts.provider]))
             sys.exit(12)
+
+    # Ensure any device filter name is valid
+    if not valid_filter(opts.device_filter):
+        print("Invalid device filter specification, must be python regex "
+              "compatible")
+        sys.exit(16)
 
     if opts.top_10:
         opts.sortkey = 'iops'
