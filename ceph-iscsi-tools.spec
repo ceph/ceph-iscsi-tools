@@ -1,12 +1,12 @@
 Name:		ceph-iscsi-tools
-Version:	2.0
+Version:	2.1
 Release:	1%{?dist}
 Summary:	Tools to interact with the ceph's iscsi gateway nodes
 Group:		Applications/System
 License:	GPLv3
 
-URL:		https://github.com/pcuzner/ceph-iscsi-tools
-Source0:	https://github.com/pcuzner/%{name}/archive/%{version}/%{name}-%{version}.tar.gz
+URL:		https://github.com/ceph/ceph-iscsi-tools
+Source0:	https://github.com/ceph/%{name}/archive/%{version}/%{name}-%{version}.tar.gz
 BuildArch:  noarch
 
 BuildRequires: python2-devel
@@ -16,7 +16,7 @@ Requires: pcp >= 3.11
 Requires: python-pcp >= 3.11
 Requires: python-rtslib >= 2.1
 Requires: python-rados >= 10.2.2
-Requires: ceph-iscsi-config >= 2.0
+Requires: ceph-iscsi-config >= 2.3
 Requires: pcp-pmda-lio >= 1.0
 
 %description
@@ -51,6 +51,13 @@ gzip %{buildroot}%{_mandir}/man8/gwtop.8
 %{_mandir}/man8/gwtop.8.gz
 
 %changelog
+* Tue Aug 15 2017 Jason Dillaman <dillaman@redhat.com> 2.1-1
+- gwtop: added device filter parameter to show specific devices
+- add -t and -l options to gwtop
+- gwtop: add iops as a sort field for the output
+- BACKLOG: Add backlog file to track user stores for additional functionality
+- gwtop: Updated the logger name to match the scriptname
+
 * Tue Dec 20 2016 Paul Cuzner <pcuzner@redhat.com> 2.0-1
 - added provider runtime option (dm or lio) to determine the metrics
 - PCP collector restructured to support LIO and LINUX pmda providers

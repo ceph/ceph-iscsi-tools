@@ -230,7 +230,7 @@ def get_options():
                         help='use reverse sort when displaying the stats')
     parser.add_argument('-v', '--version',
                         action='version',
-                        version='%(prog)s 2.0')
+                        version='%(prog)s 2.1')
 
     # use the defaults dict for the options
     parser.set_defaults(**defaults)
