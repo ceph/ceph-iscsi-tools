@@ -117,9 +117,10 @@ def get_lio_devices():
             cfg_ptr = rbd_info.find('Config:')
 
             # cfg_data looks something like
-            # rbd/iscsiTest/gprfc095-iscsiTest-20
+            # rbd/iscsiTest/gprfc095-iscsiTest-20[;option1=value1]
             cfg_data = rbd_info[cfg_ptr:].split()[1]
             storage_type, pool_name, image_name = cfg_data.split('/')
+            image_name = image_name.split(';')[0]
 
         else:
             raise ValueError("Unknown LUN type encountered with "
