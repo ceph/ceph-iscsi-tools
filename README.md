@@ -78,3 +78,67 @@ optional arguments:
   -r, --reverse         use reverse sort when displaying the stats
   -v, --version         show program's version number and exit
 ```  
+
+
+#rbdperf  
+The rbdperf tool uses the admin_socket interface for librbd to gain an insight into the latency and performance of application I/O at the libbd layer.
+  
+##Dependencies  
+Before you can use the tool the local ceph.conf file needs a ```[client]``` section that enables the admin_socket interface.  
+```bash
+[client]
+admin socket = /var/run/ceph/$name.$pid.$cctid.asok
+```  
+
+##Installation  
+Just copy the rbdperf.py file to your bin directory of choice :)
+
+##How it works  
+With the admin_socket enabled, each LUN access by a librbd client willl generate an admin socket interface. rbdperf simple polls the socket to extract IO stats.  
+However, some sockets don't provide librbd stats, so when the tool starts up it finds all the sockets, and looks for a librbd section. rbdperf keeps the reference
+to the sockets that contain librbd information, and drops any that don't.  
+  
+The sockets are polled and the results presented to the user. An interval of 5 secs seems to be the most accurate representation of load (at least
+on my test rig!).
+
+##Running rbdperf  
+```bash
+[root@rh7-gw2 ~]# python rbdperf.py -h 
+usage: rbdperf [-h] [-i INTERVAL] [-r RBD_IMAGE]
+
+Show librbd performance metrics
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i INTERVAL, --interval INTERVAL
+                        refresh interval (default = 1)
+  -r RBD_IMAGE, --rbd-image RBD_IMAGE
+                        Show specific image - pool-image_name format
+[root@rh7-gw2 ~]# python rbdperf.py 
+No librbd section found in socket /var/run/ceph/client.admin.971.140364899948976.asok...dropping
+No librbd section found in socket /var/run/ceph/client.admin.971.26803984.asok...dropping
+No librbd section found in socket /var/run/ceph/client.admin.970.35892144.asok...dropping
+waiting...
+Pool-Image Name                 r_iops   w_iops     r_lat    w_lat   r_tput    w_tput
+rbd-disk_1                         715        0      3.29     0.00    5.59M        0K
+rbd-disk_2                           0        0      0.00     0.00       0K        0K
+rbd-disk_3                           0        0      0.00     0.00       0K        0K
+rbd-disk_4                           0        0      0.00     0.00       0K        0K
+rbd-mydemo                           0        0      0.00     0.00       0K        0K
+rbd-test                             0        0      0.00     0.00       0K        0K
+rbd-test1                            0        0      0.00     0.00       0K        0K
+rbd-test13                           0        0      0.00     0.00       0K        0K
+rbd-test2                            0        0      0.00     0.00       0K        0K
+^C[root@rh7-gw2 ~]# python rbdperf.py -r rbd-disk_1
+No librbd section found in socket /var/run/ceph/client.admin.971.140364899948976.asok...dropping
+No librbd section found in socket /var/run/ceph/client.admin.971.26803984.asok...dropping
+No librbd section found in socket /var/run/ceph/client.admin.970.35892144.asok...dropping
+waiting...
+Pool-Image Name                 r_iops   w_iops     r_lat    w_lat   r_tput    w_tput
+rbd-disk_1                         718        0      3.18     0.00    5.61M        3K
+rbd-disk_1                         708        0      3.32     0.00    5.54M        0K
+rbd-disk_1                         700        0      3.19     0.00    5.47M        0K
+rbd-disk_1                         709        0      3.19     0.00    5.55M        0K
+
+```
+
