@@ -1,7 +1,7 @@
-#ceph-iscsi-tools
+# ceph-iscsi-tools
 This repo provides some helper tools for ceph/iscsi environments.
 
-##gwtop
+## gwtop
 This is a top-like tool intended to be installed on each gateway node. It provides an aggregated view of I/O from each  
 gateway node, combined with LIO information - matching the host device to a client using the device over iSCSI.  
 Performance metrics are sourced from performance co-pilot (pmcd), so this service needs to be running on each gateway  
@@ -80,20 +80,20 @@ optional arguments:
 ```  
 
 
-#rbdperf  
+# rbdperf  
 The rbdperf tool uses the admin_socket interface for librbd to gain an insight into the latency and performance of application I/O at the libbd layer.
   
-##Dependencies  
+## Dependencies  
 Before you can use the tool the local ceph.conf file needs a ```[client]``` section that enables the admin_socket interface.  
 ```bash
 [client]
 admin socket = /var/run/ceph/$name.$pid.$cctid.asok
 ```  
 
-##Installation  
+## Installation  
 Just copy the rbdperf.py file to your bin directory of choice :)
 
-##How it works  
+## How it works  
 With the admin_socket enabled, each LUN access by a librbd client willl generate an admin socket interface. rbdperf simple polls the socket to extract IO stats.  
 However, some sockets don't provide librbd stats, so when the tool starts up it finds all the sockets, and looks for a librbd section. rbdperf keeps the reference
 to the sockets that contain librbd information, and drops any that don't.  
@@ -101,7 +101,7 @@ to the sockets that contain librbd information, and drops any that don't.
 The sockets are polled and the results presented to the user. An interval of 5 secs seems to be the most accurate representation of load (at least
 on my test rig!).
 
-##Running rbdperf  
+## Running rbdperf  
 ```bash
 [root@rh7-gw2 ~]# python rbdperf.py -h 
 usage: rbdperf [-h] [-i INTERVAL] [-r RBD_IMAGE]
