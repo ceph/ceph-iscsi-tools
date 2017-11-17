@@ -85,7 +85,7 @@ The rbdperf tool uses the admin_socket interface for librbd to gain an insight i
   
 ## Dependencies  
 Before you can use the tool the local ceph.conf file needs a ```[client]``` section that enables the admin_socket interface.  
-```bash
+```
 [client]
 admin socket = /var/run/ceph/$name.$pid.$cctid.asok
 ```  
@@ -102,7 +102,7 @@ The sockets are polled and the results presented to the user. An interval of 5 s
 on my test rig!).
 
 ## Running rbdperf  
-```bash
+```
 [root@rh7-gw2 ~]# python rbdperf.py -h 
 usage: rbdperf [-h] [-i INTERVAL] [-r RBD_IMAGE]
 
@@ -114,6 +114,7 @@ optional arguments:
                         refresh interval (default = 1)
   -r RBD_IMAGE, --rbd-image RBD_IMAGE
                         Show specific image - pool-image_name format
+  
 [root@rh7-gw2 ~]# python rbdperf.py 
 No librbd section found in socket /var/run/ceph/client.admin.971.140364899948976.asok...dropping
 No librbd section found in socket /var/run/ceph/client.admin.971.26803984.asok...dropping
@@ -129,7 +130,8 @@ rbd-test                             0        0      0.00     0.00       0K     
 rbd-test1                            0        0      0.00     0.00       0K        0K
 rbd-test13                           0        0      0.00     0.00       0K        0K
 rbd-test2                            0        0      0.00     0.00       0K        0K
-^C[root@rh7-gw2 ~]# python rbdperf.py -r rbd-disk_1
+  
+[root@rh7-gw2 ~]# python rbdperf.py -r rbd-disk_1
 No librbd section found in socket /var/run/ceph/client.admin.971.140364899948976.asok...dropping
 No librbd section found in socket /var/run/ceph/client.admin.971.26803984.asok...dropping
 No librbd section found in socket /var/run/ceph/client.admin.970.35892144.asok...dropping
