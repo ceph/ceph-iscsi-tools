@@ -16,7 +16,7 @@ Requires: pcp >= 3.11
 Requires: python-pcp >= 3.11
 Requires: python-rtslib >= 2.1
 Requires: python-rados >= 10.2.2
-Requires: ceph-iscsi-config >= 2.3
+Requires: ceph-iscsi >= 3.0
 Requires: pcp-pmda-lio >= 1.0
 
 %description
