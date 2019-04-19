@@ -9,7 +9,6 @@ import os
 from rtslib_fb import root
 
 from gwtop.config.generic import get_devid
-from ceph_iscsi_config.utils import get_pool_name
 import ceph_iscsi_config.settings as settings
 
 
