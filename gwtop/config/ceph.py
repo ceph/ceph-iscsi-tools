@@ -27,7 +27,12 @@ class CephCluster(object):
         self.status = json.loads(buf_s)
 
     def _get_health(self):
-        return self.status['health']['overall_status'] if 'health' in self.status else ''
+        if 'health' not in self.status:
+            return ''
+        if self.status['health'].has_key('status'):
+            return self.status['health']['status']
+        else:
+            return self.status['health']['overall_status']
 
     def _get_osds(self):
         return self.status['osdmap']['osdmap']['num_osds'] if 'osdmap' in self.status else ''
