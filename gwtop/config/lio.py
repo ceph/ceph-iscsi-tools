@@ -4,11 +4,9 @@
 import subprocess
 import json
 import rados
-import os
 
 from rtslib_fb import root
 
-from gwtop.config.generic import get_devid
 import ceph_iscsi_config.settings as settings
 
 
@@ -93,7 +91,6 @@ class GatewayConfig(object):
         '''
 
         map = {}
-        pools = {}
         lio_root = root.RTSRoot()
 
         # get a list of active sessions on this host indexed by the iqn
@@ -121,7 +118,6 @@ class GatewayConfig(object):
                 else:
                     # if this node is connected, try and use it's alias
                     if node.node_wwn in connections:
-                        suffix = "(CON)"
                         alias_name = connections[node.node_wwn]["alias"]
                         if alias_name:
                             map[disk_name] = "{}(CON)".format(alias_name)

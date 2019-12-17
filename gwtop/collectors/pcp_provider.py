@@ -244,9 +244,9 @@ class PCPDMextract(PCPbase):
         'writes': {'sum_method': 'sum'},
         'readkb': {'sum_method': 'sum'},
         'writekb': {'sum_method': 'sum'},
-        'await': {'sum_method': 'max'},
-        'r_await': {'sum_method': 'max'},
-        'w_await': {'sum_method': 'max'}
+        'avgwait': {'sum_method': 'max'},
+        'r_avgwait': {'sum_method': 'max'},
+        'w_avgwait': {'sum_method': 'max'}
         }
 
     def __init__(self, metrics):
@@ -272,9 +272,9 @@ class PCPDMextract(PCPbase):
                                             int(disk_data.tot_writes),
                                             disk_data.tot_readkb / 1024,
                                             disk_data.tot_writekb / 1024,
-                                            disk_data.max_await,
-                                            disk_data.max_r_await,
-                                            disk_data.max_w_await,
+                                            disk_data.max_avgwait,
+                                            disk_data.max_r_avgwait,
+                                            disk_data.max_w_avgwait,
                                             client))
 
 
@@ -352,15 +352,15 @@ class PCPDMextract(PCPbase):
             tot_wios = (float)(c_w[inst] - p_w[inst])
             tot_ios = (float)(tot_rios + tot_wios)
 
-            self.metrics.disk_stats[key].await = (((c_ractive[inst] - p_ractive[inst]) +
-                                                   (c_wactive[inst] - p_wactive[inst]))
-                                                  / tot_ios) if tot_ios else 0.0
+            self.metrics.disk_stats[key].avgwait = (((c_ractive[inst] - p_ractive[inst]) +
+                                                     (c_wactive[inst] - p_wactive[inst]))
+                                                    / tot_ios) if tot_ios else 0.0
 
-            self.metrics.disk_stats[key].r_await = ((c_ractive[inst] - p_ractive[inst])
-                                                    / tot_rios) if tot_rios else 0.0
+            self.metrics.disk_stats[key].r_avgwait = ((c_ractive[inst] - p_ractive[inst])
+                                                      / tot_rios) if tot_rios else 0.0
 
-            self.metrics.disk_stats[key].w_await = ((c_wactive[inst] - p_wactive[inst])
-                                                    / tot_wios) if tot_wios else 0.0
+            self.metrics.disk_stats[key].w_avgwait = ((c_wactive[inst] - p_wactive[inst])
+                                                      / tot_wios) if tot_wios else 0.0
 
 
 class PCPcollector(threading.Thread):

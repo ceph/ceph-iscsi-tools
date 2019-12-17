@@ -179,7 +179,7 @@ class TextMode(threading.Thread):
                 if c == 'q':
                     break
             except KeyboardInterrupt:
-                print "breaking from thread"
+                print("breaking from thread")
                 break
 
         self.reset()

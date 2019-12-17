@@ -5,9 +5,6 @@ __author__ = 'paul'
 import rados
 import json
 
-import rados
-import json
-
 class CephCluster(object):
 
     conf = '/etc/ceph/ceph.conf'

@@ -7,8 +7,9 @@ License:	GPLv3
 
 URL:		https://github.com/ceph/ceph-iscsi-tools
 Source0:	https://github.com/ceph/%{name}/archive/%{version}/%{name}-%{version}.tar.gz
-BuildArch:  noarch
+BuildArch:	noarch
 
+%if 0%{?rhel} < 8
 BuildRequires: python2-devel
 BuildRequires: python-setuptools
 
@@ -18,6 +19,17 @@ Requires: python-rtslib >= 2.1
 Requires: python-rados >= 10.2.2
 Requires: ceph-iscsi >= 3.0
 Requires: pcp-pmda-lio >= 1.0
+%else
+BuildRequires: python3-devel
+BuildRequires: python3-setuptools
+
+Requires: pcp >= 4.3
+Requires: python3-pcp >= 4.3
+Requires: python3-rtslib >= 2.1.fb68
+Requires: python3-rados >= 10.2.2
+Requires: ceph-iscsi >= 3.0
+Requires: pcp-pmda-lio >= 4.3
+%endif
 
 %description
 This package provides tools to help the admin interact with
@@ -47,8 +59,12 @@ gzip %{buildroot}%{_mandir}/man8/gwtop.8
 %doc LICENSE
 %doc samples/
 %{_bindir}/gwtop
-%{python2_sitelib}/*
 %{_mandir}/man8/gwtop.8.gz
+%if 0%{?rhel} < 8
+%{python2_sitelib}/*
+%else
+%{python3_sitelib}/*
+%endif
 
 %changelog
 * Tue Aug 15 2017 Jason Dillaman <dillaman@redhat.com> 2.1-1
