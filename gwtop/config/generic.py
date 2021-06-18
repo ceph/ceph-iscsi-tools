@@ -65,9 +65,9 @@ class DiskSummary(object):
         self.writes = []
         self.readkb = []
         self.writekb = []
-        self.await = []
-        self.r_await = []
-        self.w_await = []
+        self.avgwait = []
+        self.r_avgwait = []
+        self.w_avgwait = []
         self.read_mb = []
         self.write_mb = []
 

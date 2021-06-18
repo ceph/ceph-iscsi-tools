@@ -47,9 +47,9 @@ class TerminalFile:
 
 if __name__=="__main__":
     s = TerminalFile(sys.stdin)
-    print "Press q to quit..."
+    print("Press q to quit...")
     i = 0
     while s.getch() != "q":
         sys.stdout.write("%08d\r"%i)
         i += 1
-    print "-- END --"
+    print("-- END --")

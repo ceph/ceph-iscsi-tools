@@ -1,5 +1,9 @@
+%if 0%{?rhel} == 7
+%global with_python2 1
+%endif
+
 Name:		ceph-iscsi-tools
-Version:	2.1
+Version:	2.2
 Release:	1%{?dist}
 Summary:	Tools to interact with the ceph's iscsi gateway nodes
 Group:		Applications/System
@@ -7,8 +11,9 @@ License:	GPLv3
 
 URL:		https://github.com/ceph/ceph-iscsi-tools
 Source0:	https://github.com/ceph/%{name}/archive/%{version}/%{name}-%{version}.tar.gz
-BuildArch:  noarch
+BuildArch:      noarch
 
+%if 0%{?with_python2}
 BuildRequires: python2-devel
 BuildRequires: python-setuptools
 
@@ -18,6 +23,17 @@ Requires: python-rtslib >= 2.1
 Requires: python-rados >= 10.2.2
 Requires: ceph-iscsi >= 3.0
 Requires: pcp-pmda-lio >= 1.0
+%else
+BuildRequires: python3-devel
+BuildRequires: python3-setuptools
+
+Requires: pcp >= 4.3
+Requires: python3-pcp >= 4.3
+Requires: python3-rtslib >= 2.1.fb68
+Requires: python3-rados >= 10.2.2
+Requires: ceph-iscsi >= 3.0
+Requires: pcp-pmda-lio >= 4.3
+%endif
 
 %description
 This package provides tools to help the admin interact with
@@ -30,14 +46,25 @@ running on each gateway node, and aggregated into a single
 view.
 
 %prep
-%setup -q 
+%autosetup -p1
 
 %build
-CFLAGS="$RPM_OPT_FLAGS" %{__python} setup.py build
-
+%if 0%{?with_python2}
+CFLAGS="$RPM_OPT_FLAGS" %{__python2} setup.py build
+%else
+%if 0%{?suse_version}
+%python3_build
+%else
+CFLAGS="$RPM_OPT_FLAGS" %{py3_build}
+%endif
+%endif
 
 %install
-%{__python} setup.py install --skip-build --root %{buildroot} --install-scripts %{_bindir}
+%if 0%{?with_python2}
+%{__python2} setup.py install --skip-build --root %{buildroot} --install-scripts %{_bindir}
+%else
+%{py3_install}
+%endif
 mkdir -p %{buildroot}%{_mandir}/man8
 install -m 0644 gwtop.8 %{buildroot}%{_mandir}/man8/
 gzip %{buildroot}%{_mandir}/man8/gwtop.8
@@ -47,10 +74,17 @@ gzip %{buildroot}%{_mandir}/man8/gwtop.8
 %doc LICENSE
 %doc samples/
 %{_bindir}/gwtop
-%{python2_sitelib}/*
 %{_mandir}/man8/gwtop.8.gz
+%if 0%{?rhel} < 8
+%{python2_sitelib}/*
+%else
+%{python3_sitelib}/*
+%endif
 
 %changelog
+* Thu Jun 17 2021 David Galloway <dgalloway@redhat.com> 2.2-1
+- EL8 and python3 support
+
 * Tue Aug 15 2017 Jason Dillaman <dillaman@redhat.com> 2.1-1
 - gwtop: added device filter parameter to show specific devices
 - add -t and -l options to gwtop
